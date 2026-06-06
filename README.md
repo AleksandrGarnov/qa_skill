@@ -10,8 +10,8 @@ You know the one: the AI writes the tests, everything's green, coverage hits the
 ![tests](https://img.shields.io/badge/scripts-self--tested-success)
 <!-- TODO add install-count badge once listed in a marketplace -->
 
-<!-- TODO: terminal GIF here — the merge-gate hook blocking a `git merge` while QA gates are red. Record with vhs/asciinema → docs/demo.gif. Highest-converting asset; the wow is "it physically stopped a bad merge". -->
-<!-- ![qa_skill demo: merge-gate blocks a bad merge](docs/demo.gif) -->
+<!-- Demo GIF: from the repo root run `vhs docs/demo.tape` to record docs/demo.gif (the merge-gate hook blocking a bad merge, then allowing it once the gates are green), then uncomment the line below. The .tape drives the real hook via docs/demo/merge-gate-demo.sh — nothing staged. -->
+<!-- ![qa_skill demo: the merge-gate hook blocks a merge while the QA gates are red, then allows it once they're green](docs/demo.gif) -->
 
 ### Why qa_skill?
 
