@@ -1,0 +1,19 @@
+{
+  "name": "qa-suite",
+  "metadata": {
+    "description": "QA skills for Claude Code — full pre-merge testing iterations for git branches."
+  },
+  "owner": {
+    "name": "Aleksandr",
+    "url": "https://github.com/AleksandrGarnov"
+  },
+  "plugins": [
+    {
+      "name": "qa-skill",
+      "source": "./",
+      "description": "QA skills for Claude Code: test-iteration (full pre-merge QA cycle), branch-review, qa-research, and jira-context. Tool-agnostic with fallbacks and deterministic scripts.",
+      "category": "testing",
+      "tags": ["qa", "testing", "jira", "code-review", "security-review"]
+    }
+  ]
+}
