@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.1] - 2026-06-06
+
+### Changed
+- **README reworked for clarity and conversion** — a value-prop lead ("won't rubber-stamp green tests"),
+  a Why / What-it-does framing, a flow diagram, badges, and a placeholder for a merge-gate demo GIF.
+  Install is surfaced up top, with the skills CLI (`npx skills add`) as the recommended cross-agent
+  method alongside the plugin marketplace; install options were renumbered accordingly.
+- **`test-iteration` description** now front-loads triggers (pre-merge, Claude Code, Jira AC) and the
+  evidence-gate differentiator, so the skill triggers more reliably and reads better in marketplace
+  listings. Docs/metadata only — no behavior change.
+
 ## [2.21.0] - 2026-06-05
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "name": "qa-skill",
   "description": "QA skills for Claude Code: test-iteration (orchestrates a full pre-merge QA cycle), branch-review (code + security review of a branch), qa-research (sourced best-practices for a change), and jira-context (pulls a ticket's acceptance criteria & repro for QA). Tool-agnostic with fallbacks; ships deterministic git/deploy/jira scripts.",
-  "version": "2.21.0",
+  "version": "2.21.1",
   "author": {
     "name": "Aleksandr",
     "url": "https://github.com/AleksandrGarnov"

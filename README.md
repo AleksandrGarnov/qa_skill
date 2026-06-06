@@ -1,15 +1,34 @@
-# qa_skill — evidence-gated pre-merge QA for Claude Code
+# qa_skill
 
-> Runs a git branch through a full QA cycle before merge — Jira acceptance criteria → review → research → checklist → staging run → **go/no-go**. It won't sign off a clean GO until every acceptance criterion is backed by a raw observation, and a **merge-gate hook hard-blocks the merge** if the gates aren't green. Not a naive test generator — a gate that refuses to pass tests that don't actually prove anything.
+**Pre-merge QA for Claude Code that won't rubber-stamp green tests.**
+
+You know the one: the AI writes the tests, everything's green, coverage hits the ceiling — and prod still goes down. Coverage lies, mocks test themselves, and a green CI lulls you to sleep. qa_skill doesn't let that slide. It runs a branch through a full QA cycle and **holds the gate**: a clean GO is blocked until every acceptance criterion is backed by a *raw observation* — not a code-read, not a mocked test. And it won't let the merge through while the gates are red.
 
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)
-![version](https://img.shields.io/badge/version-2.21.0-blue)
+![version](https://img.shields.io/badge/version-2.21.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/scripts-self--tested-success)
 <!-- TODO add install-count badge once listed in a marketplace -->
 
-<!-- TODO: terminal GIF here — the merge-gate hook blocking a `git merge` while QA gates are red. Record with vhs/asciinema → docs/demo.gif. This is the single highest-converting asset; the wow is "it physically stopped a bad merge". -->
+<!-- TODO: terminal GIF here — the merge-gate hook blocking a `git merge` while QA gates are red. Record with vhs/asciinema → docs/demo.gif. Highest-converting asset; the wow is "it physically stopped a bad merge". -->
 <!-- ![qa_skill demo: merge-gate blocks a bad merge](docs/demo.gif) -->
+
+### Why qa_skill?
+
+Most AI QA assistants do one thing — generate *more* tests. That's the cheap part of the job, and it's exactly what AI commoditizes. The value was never in the count of tests; it's in whether they actually catch bugs. This skill is built the other way around: not "crank out cases" but "prove the feature works" — with the discipline a naive generator skips.
+
+### What it does
+
+One command gives Claude Code the discipline of a senior QA: it pulls context from Jira (acceptance criteria), reviews the diff, researches the risks, builds a right-sized checklist, runs it on staging, and returns a go/no-go verdict — backed by raw observations, not "looks fine in the code". You keep writing code. The skill holds the line on quality.
+
+```
+branch → context (Jira AC) → review + research → checklist
+       → staging run → evidence-gate → GO / NO-GO
+                             │
+                             └─ merge-gate hook: blocks the merge while gates are red
+```
+
+It runs on a **bare Claude Code install** — no plugins required. Richer tools (ruflo, Exa, Atlassian MCP) are optional upgrades, never hard dependencies.
 
 ### Install
 
@@ -27,8 +46,6 @@ npx skills add AleksandrGarnov/qa_skill
 ```
 
 Cross-platform (macOS/Linux/Windows). Full options (manual symlink, per-project) in [Installation](#installation).
-
-**Why it's different:** most QA assistants generate more tests. This one gates them — an acceptance criterion can't pass on a code-read or a mocked unit test, and the merge is physically blocked until coverage is green. Built on a bare Claude Code install (no plugins required); richer tools (ruflo, Exa, Atlassian MCP) are optional upgrades, never hard deps.
 
 ## Skills
 
