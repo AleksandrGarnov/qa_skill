@@ -1,6 +1,34 @@
-# qa_skill
+# qa_skill — evidence-gated pre-merge QA for Claude Code
 
-QA skills for [Claude Code](https://claude.com/claude-code), packaged as a plugin. Each skill lives in `skills/<name>/SKILL.md` and is distributed as the `qa-skill` plugin via the `qa-suite` marketplace.
+> Runs a git branch through a full QA cycle before merge — Jira acceptance criteria → review → research → checklist → staging run → **go/no-go**. It won't sign off a clean GO until every acceptance criterion is backed by a raw observation, and a **merge-gate hook hard-blocks the merge** if the gates aren't green. Not a naive test generator — a gate that refuses to pass tests that don't actually prove anything.
+
+![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)
+![version](https://img.shields.io/badge/version-2.21.0-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![tests](https://img.shields.io/badge/scripts-self--tested-success)
+<!-- TODO add install-count badge once listed in a marketplace -->
+
+<!-- TODO: terminal GIF here — the merge-gate hook blocking a `git merge` while QA gates are red. Record with vhs/asciinema → docs/demo.gif. This is the single highest-converting asset; the wow is "it physically stopped a bad merge". -->
+<!-- ![qa_skill demo: merge-gate blocks a bad merge](docs/demo.gif) -->
+
+### Install
+
+**skills CLI** (one line, works across Claude Code, Cursor, Codex, Gemini and 50+ agents):
+
+```
+npx skills add AleksandrGarnov/qa_skill
+```
+
+**Or as a Claude Code plugin** (version-tracked, auto-updates):
+
+```
+/plugin marketplace add AleksandrGarnov/qa_skill
+/plugin install qa-skill@qa-suite
+```
+
+Cross-platform (macOS/Linux/Windows). Full options (manual symlink, per-project) in [Installation](#installation).
+
+**Why it's different:** most QA assistants generate more tests. This one gates them — an acceptance criterion can't pass on a code-read or a mocked unit test, and the merge is physically blocked until coverage is green. Built on a bare Claude Code install (no plugins required); richer tools (ruflo, Exa, Atlassian MCP) are optional upgrades, never hard deps.
 
 ## Skills
 
@@ -81,7 +109,17 @@ The Atlassian MCP is **optional** — without it (or when no key resolves) the s
 
 ## Installation
 
-### Option A — plugin marketplace (recommended, cross-platform)
+### Option A — skills CLI (recommended, cross-agent)
+
+One command installs the skills for every Claude-compatible agent at once (Claude Code, Cursor, Codex, Gemini, and 50+ others):
+
+```
+npx skills add AleksandrGarnov/qa_skill
+```
+
+Add `-g` to install globally (all projects) and `-y` to skip prompts. Requires Node.js 18+. Start a new Claude Code session and the skills are picked up automatically — invoke with `/test-iteration <git-branch>`.
+
+### Option B — Claude Code plugin marketplace (version-tracked)
 
 Add the marketplace and install the plugin from inside Claude Code:
 
@@ -92,7 +130,7 @@ Add the marketplace and install the plugin from inside Claude Code:
 
 Claude Code fetches the plugin, tracks its version, and handles updates (`/plugin update qa-skill`). This works on macOS, Linux, and Windows — plugins are copied into the plugin cache, no shell script or symlink needed.
 
-### Option B — manual symlink, all projects (macOS/Linux fallback)
+### Option C — manual symlink, all projects (macOS/Linux fallback)
 
 Clone and symlink the skills into `~/.claude/skills/` with a single script:
 
@@ -102,9 +140,9 @@ cd qa_skill
 ./install.sh
 ```
 
-A later `git pull` in this folder updates the skills automatically (symlink, not a copy). Note: bash + symlinks — not for native Windows; use Option A there.
+A later `git pull` in this folder updates the skills automatically (symlink, not a copy). Note: bash + symlinks — not for native Windows; use Option A or B there.
 
-### Option C — per project (share with team via git)
+### Option D — per project (share with team via git)
 
 Copy the skills you need into the project's repository and commit them. Note `test-iteration` composes `branch-review` and `qa-research` and uses the bundled `scripts/`, so copy all of them for the full cycle:
 
@@ -113,7 +151,7 @@ cp -r skills/test-iteration skills/branch-review skills/qa-research /path/to/pro
 cp -r scripts /path/to/project/.claude/skills/test-iteration/   # keep scripts reachable
 ```
 
-> **Plugin vs manual install.** `${CLAUDE_PLUGIN_ROOT}` and cross-skill invocation are only guaranteed under **Option A (plugin)**. With manual install (B/C) the skills fall back to running the equivalent git commands inline — they still work, just without the script-level determinism. Option A is recommended.
+> **Plugin vs manual install.** `${CLAUDE_PLUGIN_ROOT}` and cross-skill invocation are only guaranteed under the **plugin install (Option B)** or the **skills CLI (Option A)**. With a manual symlink/per-project copy (Options C/D) the skills fall back to running the equivalent git commands inline — they still work, just without the script-level determinism. Option A or B is recommended.
 
 ### Requirements / dependencies
 
@@ -127,7 +165,7 @@ After installation, restart Claude Code and run:
 /qa-skill:test-iteration <git-branch>
 ```
 
-(With Option B/C the skill is invoked as `/test-iteration <git-branch>` — without the plugin namespace.)
+(With the skills CLI or a manual install — Options A/C/D — the skill is invoked as `/test-iteration <git-branch>`, without the plugin namespace.)
 
 The skill reads the test environment from the project's `CLAUDE.md`/`README`, or asks for it.
 

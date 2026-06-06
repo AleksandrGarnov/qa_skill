@@ -1,6 +1,6 @@
 ---
 name: test-iteration
-description: Runs a git branch through a full QA cycle before merge — project context, branch review, best-practices research, a manual test checklist, execution on the staging environment, and a report with a go/no-go verdict. Use when a feature or branch needs to be tested before merging.
+description: Runs a git branch through a full pre-merge QA cycle for Claude Code — project + Jira acceptance-criteria context, branch review, best-practices research, a right-sized test checklist, execution on the staging environment, and an evidence-gated go/no-go verdict (a clean GO is blocked until every acceptance criterion is backed by a raw observation, not a code-read or a mocked test). Use when a feature or branch needs real QA before merging.
 argument-hint: "[git-branch]"
 ---
 
