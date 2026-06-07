@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2026-06-07
+
+### Added
+- **Confidence ledger — a trust metric for lowering human presence on a task class** (`scripts/confidence.sh`
+  + `skills/test-iteration/references/confidence-ledger.md`). A per-component markdown ledger of QA outcomes:
+  step 9 records a clean GO, step 12 records an escape (which resets the streak). The *streak* — clean GOs in
+  a row since the last escape — is the signal that the agent layer handles that task class reliably. Step 1
+  reads `confidence.sh suggest` and, on a long streak, **offers** the user a lower-presence / auto-approve run
+  at step 7. Lowering presence is always the user's explicit opt-in, and the merge-gate hook still enforces
+  `CONTEXT-OK + REPORT-OK + COVERAGE-OK` regardless — confidence lowers ceremony, never the safety floor.
+  Plain markdown + awk, same shape as `learned-checks.sh`; 17 self-contained tests in `scripts/tests/`.
+
 ## [2.21.1] - 2026-06-06
 
 ### Changed
