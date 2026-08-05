@@ -31,11 +31,15 @@ git checkout --quiet "$branch"
 git pull --quiet --ff-only 2>/dev/null || true
 
 # Auto-detect base only if not given: origin/HEAD, then common names.
+# Never pick the branch under test as its own base; if no distinct base is
+# discoverable, return UNKNOWN so the caller can ask instead of diffing a
+# branch against itself.
 if [ -z "$base" ]; then
   for cand in \
     "$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')" \
     develop main master; do
     [ -n "$cand" ] || continue
+    [ "$cand" = "$branch" ] && continue
     if git show-ref --verify --quiet "refs/remotes/origin/$cand"; then
       base="$cand"
       break
