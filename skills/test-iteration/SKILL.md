@@ -32,7 +32,12 @@ Read `CLAUDE.md`: stack, **base branch**, **staging target** (+ any version/comm
 "${CLAUDE_PLUGIN_ROOT}/scripts/prior-tests.sh" <test-docs-path> <KEY> [branch]   # PRIOR-DOCS / NONE / DOCS-PATH-MISSING
 ```
 plus the **Jira discussion** and **PR comments** (`gh pr view <PR> --comments`, skim bots). A status like *Awaiting / Returned testing* = a re-test: prior findings become **priority re-checks** (re-verified **live** on the current build; "fixed but not re-verified" = open), their components become hotspots, and you diff tested-commit↔HEAD. Continue that history (step 10), don't restart.
-**Done when:** you know stack/base/staging, the AC/repro (or that they're missing), and whether this is fresh or a re-test — `prior-tests.sh` run, discussion + PR comments read.
+**Confidence check (presence advice — never auto-acts).** Read this task class's track record to inform how much human presence step 7 needs:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/confidence.sh" suggest <test-docs-path>/qa-confidence.md "<changed-component>"
+```
+`READY-FOR-PRESENCE-REDUCTION` = a long streak of clean GOs that never escaped → **offer** the user a lower-presence/auto-approve run at step 7 (the merge-gate still enforces the gates). `KEEP-PRESENCE` = manual approval as usual. This only *surfaces an option*; lowering presence is always the user's explicit opt-in.
+**Done when:** you know stack/base/staging, the AC/repro (or that they're missing), whether this is fresh or a re-test — `prior-tests.sh` run, discussion + PR comments read — and you've read the component's confidence streak.
 
 ### 2. Branch + diff (deterministic)
 ```bash
@@ -131,7 +136,13 @@ Run **two-axis orphan detection**: **AC ↔ tests** and **changed-code ↔ tests
 Write the report path into the run-state (`.claude/qa-run.json`, step 7) so the **merge-gate hook** enforces these three gates at the irreversible action. You run them here for early feedback, **but the binding enforcement is the hook, not this step** — even if this step were skipped, the hook blocks the merge until all three are green.
 
 **Verdict — fail-closed:** GO only if `CONTEXT-OK` **and** `REPORT-OK` **and** `COVERAGE-OK` **and** every critical-path `pass` is corroborated by the step-8.5 independent re-run (or guaranteed by a green acceptance test) **and** every exit criterion (core + project) is met against the fixed thresholds, not a fresh judgement at report time. Any open blocker/major, critical-path coverage <100%, a blocked/unrun critical item, an AC passing on sub-gate evidence, or a red regression → not a clean GO. `exploratory` caps at ⚠️ GO (exploratory); "GO with deferrals" only with mitigation + owner + fix-date per deferred item.
-**Done when:** ledger + both orphan axes + Evidence column + self-audit + `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK`; verdict justified against the fixed criteria.
+
+**On a clean ✅ GO**, record it to the confidence ledger — one row per changed component — so the trust streak that step 1 reads grows run-over-run (a clean GO is the positive signal; an escape later resets it at step 12):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/confidence.sh" record <test-docs-path>/qa-confidence.md "<component>" go "<adw/run id>"
+```
+Record GO **only** for a clean GO — never for `GO with deferrals`, `exploratory`, or NO-GO (those aren't the reliability signal).
+**Done when:** ledger + both orphan axes + Evidence column + self-audit + `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK`; verdict justified against the fixed criteria; a clean GO recorded to the confidence ledger.
 
 ### 10. Re-test loop (if not GO)
 On new fixes, don't restart — re-run only the failed/blocked items + a regression pass on what they could touch, against the **bumped build** (re-testing the failed build proves nothing). Record each defect's `found in round` / `fix verified in round`; the AC matrix is the source of truth across rounds. Repeat until GO (or the user calls it).
@@ -145,3 +156,8 @@ If a defect surfaces after GO, capture it ([escaped-defects.md](references/escap
 "${CLAUDE_PLUGIN_ROOT}/scripts/learned-checks.sh" add <test-docs-path>/learned-checks.md "<component>" "<the check that would have caught it>" "<the escape that taught it>"
 ```
 A recurring killer item that proved its worth (caught bugs across runs) is also worth adding, not only post-GO escapes. Step 5 pulls these back in automatically. Lightweight: a log line + the learned-check row + a memory note.
+
+Also **record the escape to the confidence ledger** — it resets that component's clean-GO streak, so the presence advice at step 1 honestly reflects that this task class just slipped:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/confidence.sh" record <test-docs-path>/qa-confidence.md "<component>" escape "<run id>"
+```

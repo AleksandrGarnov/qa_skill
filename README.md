@@ -10,8 +10,8 @@ You know the one: the AI writes the tests, everything's green, coverage hits the
 ![tests](https://img.shields.io/badge/scripts-self--tested-success)
 <!-- TODO add install-count badge once listed in a marketplace -->
 
-<!-- TODO: terminal GIF here — the merge-gate hook blocking a `git merge` while QA gates are red. Record with vhs/asciinema → docs/demo.gif. Highest-converting asset; the wow is "it physically stopped a bad merge". -->
-<!-- ![qa_skill demo: merge-gate blocks a bad merge](docs/demo.gif) -->
+<!-- Demo GIF: from the repo root run `vhs docs/demo.tape` to record docs/demo.gif (the merge-gate hook blocking a bad merge, then allowing it once the gates are green), then uncomment the line below. The .tape drives the real hook via docs/demo/merge-gate-demo.sh — nothing staged. -->
+<!-- ![qa_skill demo: the merge-gate hook blocks a merge while the QA gates are red, then allows it once they're green](docs/demo.gif) -->
 
 ### Why qa_skill?
 
@@ -79,6 +79,7 @@ Deterministic, security-sensitive steps run as scripts, not as model improvisati
 - `verify-coverage.sh <manifest> <report>` — set-diff against the approved, frozen checklist manifest: fails if any approved item is missing a result row **or marked `not executed`** (every approved item is non-skippable), or any item isn't rooted in a defined user journey (a code-built checklist).
 - `verify-context.sh <manifest>` — the **system input-guidelines gate**: fails closed unless the manifest's `## Context` carries the *fetched* PR+Jira discussion (read the comments), a `prior-tests` basis (`FRESH`/`RE-TEST` — re-tests build on old runs), and Exa research. Makes the front-loaded steps non-skippable.
 - `learned-checks.sh add|list|match <file> …` — the **feedback loop**: a growing, project-level store of checks distilled from real outcomes (escaped defects, recurring killer items). Step 12 appends; step 5 pulls the rows matching the changed components back into the checklist, so a check that caught a bug re-enters future runs. Plain markdown + grep — in-context learning, not model training.
+- `confidence.sh record|streak|suggest|list <file> …` — the **trust metric**: a per-component ledger of clean GOs vs escapes. The *streak* (clean GOs in a row since the last escape) is the signal for **lowering human presence** on a task class — step 9 records a clean GO, step 12 records an escape (which resets the streak), step 1 reads `suggest` to offer a lower-presence run. Confidence lowers ceremony, never the safety floor — the merge-gate still enforces the gates. See [confidence-ledger.md](skills/test-iteration/references/confidence-ledger.md).
 - `finalize-gate.sh` — the **PreToolUse hook handler** (see below).
 
 All scripts have self-contained tests under `scripts/tests/` (no framework needed) — run them with `bash scripts/tests/run-all.sh`.
