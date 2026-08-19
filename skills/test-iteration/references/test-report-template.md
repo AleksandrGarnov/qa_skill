@@ -5,6 +5,7 @@
 **Environment:** <stage-url>
 **Base branch:** <main/develop>
 **Build / commit:** <build / commit-hash>
+**Sidecars:** `report.json` mirrors this file for automation; keep the same checklist item IDs, AC IDs, and round labels in both.
 
 **Prior-test basis (REQUIRED — fill before any verdict):** <one of:>
 - `FRESH` — first test of this task (`prior-tests.sh` = NONE, no prior findings in the Jira discussion / PR comments), **or**
@@ -47,12 +48,14 @@ Verdict selection rules:
 ## Checklist results
 > `Round` = which re-test round this result is from (R1 = first pass). On a re-test, only failed/blocked items + regression are re-run; carry forward the rest with their round.
 
-> Every row needs a full **execution record**: `How run` (verbatim command/steps), `Result`, `Evidence`, `Actual` (raw output). No cell left blank or as a `<placeholder>` — `scripts/verify-report.sh` fails the report otherwise.
+> Every row needs a full **execution record**: `How run` (verbatim command/steps), `Result`, `Evidence`, `Actual` (raw output). No cell left blank or as a `<placeholder>` — `scripts/verify-report.sh` fails the report otherwise. The adjacent `report.json` sidecar must carry the same row as structured data (`itemId`, `result`, `evidenceType`, `round`, `rawQuote` / artifact ref).
 > The `#` column **reuses the item ID from the approved manifest** verbatim. `scripts/verify-coverage.sh <manifest> <this report>` set-diffs the two: a manifest item ID with no row here is a **skipped item** and fails the verdict. Every approved item must appear — run it, or record it `blocked` (never silently absent).
 
 | # | Item | How run (verbatim command / UI steps / API call) | Result | Evidence | Round | Actual (raw output observed — quote, don't paraphrase) |
 |---|------|---------------------------------------------------|--------|----------|-------|-------------------------------------------------------|
 | 1 | <item> | <the exact command / UI steps / API call you ran, verbatim> | pass / fail / blocked / flaky / N/A (reason) / not executed | observed-data / api-response / log / code-read / unit:mocked / unit:integration | R1 | <actual request/response/log/observed value> |
+
+> `report.json` mirrors every row above as structured data keyed by the same item ID: `itemId`, `result`, `evidenceType`, `round`, and either `rawQuote` or `artifactRefs[]`. Runtime AC and critical-path corroboration are checked against that sidecar by `verify-evidence.sh`.
 
 > `N/A` = genuinely doesn't apply (reason recorded at checklist time). An applicable check you couldn't run is **`blocked`** (a coverage gap), never `not executed`. `How run` must be the *actual* method you used — empty = the item wasn't done; a method that doesn't match the item = a proxy (not covered).
 > **Evidence** = how you know. A `pass` on `code-read` or `unit:mocked` alone, for a runtime-behaviour item, is not a pass — it's a gap. "Can't write" ≠ "can't read": cite a constraint only after a read-only attempt.
@@ -68,6 +71,8 @@ Verdict selection rules:
 | AC id | Acceptance criterion | Covering checklist items | Evidence | Status (pass/fail/blocked/GAP) | Linked defects |
 |-------|----------------------|--------------------------|----------|--------------------------------|----------------|
 | AC1 | <criterion> | #1, #4 | observed-data | pass | — |
+
+> In `report.json`, persist this matrix as structured rows keyed by the same AC ids and checklist item IDs used here.
 
 > **Evidence-gate:** a runtime-behaviour AC needs ≥1 `observed-data`/`api-response`/`log`. On `code-read` or `unit:mocked` alone → status **GAP**, not pass. An AC covered only by mocked tests needs ≥1 real-data observation of the *same* behaviour (mock↔reality verified at least once).
 
@@ -111,6 +116,8 @@ Verdict selection rules:
 | Item ID | Primary actual (quoted) | Independent re-run actual (quoted) | Agree? | Note |
 |---------|-------------------------|------------------------------------|--------|------|
 | 1 | `<primary raw output>` | `<independent raw output>` | yes / **NO → GAP** | <covered by acceptance test? / discrepancy to chase> |
+
+> In `report.json`, persist the same row under the item ID with `status=agree|GAP` and `artifactRefs[]`; if a real acceptance test supersedes the second run, mark `acceptanceTestEquivalent=true` on that item result.
 
 **Corroboration result:** <all critical-path passes corroborated by the blind re-run → clear | N disagree/unreproduced → GAP, clean GO blocked>
 

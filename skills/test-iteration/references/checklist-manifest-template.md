@@ -2,6 +2,7 @@
 > The **frozen, approved contract** for this run (locked at step 7). The report (step 9) is cross-checked against it by `scripts/verify-coverage.sh`, which fails closed if **any item ID here has no result row** (a skipped item) or **any item doesn't trace to a journey** below. Built from **user journeys, not code concerns** — define the journeys first, then hang every item off one.
 
 **Branch:** <branch>   **Build / commit:** <commit>   **Approved:** <date>
+**Sidecars:** `manifest.json` mirrors this file for automation; keep the same journey IDs (`J#`) and item IDs here and there.
 
 ## Context (system guidelines — gathered BEFORE approval; gate: `verify-context.sh`)
 > Fill each block by running the **tool**, not from memory — the gate fails closed on an empty/placeholder block, and so does the merge-gate hook. This makes the front-loaded steps non-skippable.
@@ -24,12 +25,12 @@
 | J2 | <downstream consumer> | <reads / acts on the output> | <output is correct & trustworthy> |
 
 ## Items (every item traces to a J above)
-> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
+> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **AC refs** must point at the acceptance-criteria IDs carried from `jira-context`, and the same refs go into `manifest.json`. **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
 
-| ID | Journey | What to run (exact command / UI steps / API call) | Expected |
-|----|---------|----------------------------------------------------|----------|
-| 1 | J1 | <exact method> | <expected> |
-| 2 | J1 | <exact method> | <expected> |
-| 3 | J2 | <exact method> | <expected> |
+| ID | Journey | AC refs | What to run (exact command / UI steps / API call) | Expected |
+|----|---------|---------|----------------------------------------------------|----------|
+| 1 | J1 | AC1 | <exact method> | <expected> |
+| 2 | J1 | AC2 | <exact method> | <expected> |
+| 3 | J2 | AC3 | <exact method> | <expected> |
 
 > After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted.

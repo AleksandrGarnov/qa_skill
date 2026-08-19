@@ -87,13 +87,24 @@ Have a **fresh `general-purpose` subagent** — given only the inputs (diff, AC,
 ### 7. Approval — PAUSE (user required)
 Show the user the **manifest** (journeys + items) + exit criteria (post-6.5) and **wait for "ok" or edits before testing**. They approve scope and thresholds but **cannot weaken the mandatory core**. Don't proceed without explicit confirmation. On "ok" the manifest is **frozen** — it's the contract; the step-9 report must account for every item ID in it.
 
-On freeze, **record the run-state** so the merge-gate hook can enforce the gates without depending on you remembering to run them:
+On freeze, **create the canonical QA bundle + record the run-state** so the merge-gate hook can enforce the gates without depending on you remembering to run them:
 ```bash
+bundle="$("${CLAUDE_PLUGIN_ROOT}/scripts/qa-bundle.sh" init "<test-docs-path>" "<task-id-or-branch>" "<run-id>")"
+manifest_md="$(printf '%s\n' "$bundle" | sed -n 's/^MANIFEST-MD: //p')"
+manifest_json="$(printf '%s\n' "$bundle" | sed -n 's/^MANIFEST-JSON: //p')"
+report_md="$(printf '%s\n' "$bundle" | sed -n 's/^REPORT-MD: //p')"
+report_json="$(printf '%s\n' "$bundle" | sed -n 's/^REPORT-JSON: //p')"
+artifacts_json="$(printf '%s\n' "$bundle" | sed -n 's/^ARTIFACTS-JSON: //p')"
+bundle_dir="$(printf '%s\n' "$bundle" | sed -n 's/^BUNDLE-DIR: //p')"
+
 mkdir -p "${CLAUDE_PROJECT_DIR:-.}/.claude"
-printf '{"manifest":"%s","report":"%s","branch":"%s"}\n' "<abs manifest path>" "<abs report path (step 9)>" "$ARGUMENTS" \
+printf '{"schemaVersion":1,"runId":"%s","status":"approved","branch":"%s","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"%s","artifactsIndexJson":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending"}}\n' \
+  "<run-id>" "$ARGUMENTS" "$bundle_dir" "$manifest_md" "$manifest_md" "$manifest_json" "$report_md" "$report_md" "$report_json" "$artifacts_json" \
   > "${CLAUDE_PROJECT_DIR:-.}/.claude/qa-run.json"
 ```
-The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass — so a skipped checklist item or ungathered context physically cannot reach a merge, regardless of what the agent does. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
+Write the frozen manifest to **both** `manifest.md` and the adjacent `manifest.json` sidecar. The markdown stays the approval/report surface for humans; the JSON sidecar is the canonical machine-readable contract for automation. Keep the item IDs and journey refs identical across both.
+
+The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass — so a skipped checklist item or ungathered context physically cannot reach a merge, regardless of what the agent does. If `manifestJson` / `reportJson` are declared in the run-state, they must exist on disk too. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
 
 ### 8. Run on staging — a full execution record per item
 **Entry criteria (don't start until they hold):** the target is non-prod; staging is reachable; **THIS branch's commit is deployed** —
@@ -102,11 +113,13 @@ The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) read
 ```
 (or confirm the build another way — a wrong build invalidates the verdict); test data/accounts/flags ready.
 
-Run each item by hand — **trigger via the real entry point** (UI / API as a client); `repl`/`cli`/DB queries are for **setup and reading state**, not for driving the flow. **Never upload a file to the server.** For **every item** record a 4-part **execution record**:
+Run each item by hand — **trigger via the real entry point** (UI / API as a client); `repl`/`cli`/DB queries are for **setup and reading state**, not for driving the flow. **Never upload a file to the server.** For **every item** record a 4-part **execution record** in the markdown report **and** in `report.json` using the same item ID:
 - **how run** — the *verbatim* command/steps actually used (not "checked the balance");
 - **raw output** — the actual response/log/value, quoted;
 - **evidence type** — `observed-data`/`api-response`/`log`/`code-read`/`unit:mocked`/`unit:integration`;
 - **bucket** — pass / fail / blocked / flaky / N/A (reason) / not executed.
+
+Structured sidecar requirement (`report.json`): each result row must carry at least `itemId`, `result`, `evidenceType`, `round`, and either a non-empty `rawQuote` or an `artifactRef` into the bundle. This is what the structured evidence gate validates.
 
 Rules:
 - Empty "how run" = `blocked`/`not executed`, never pass. A "how run" that doesn't match the prescribed action is a **proxy** — the item is not covered.
@@ -116,14 +129,14 @@ Rules:
 **Done when:** every item has a full execution record; nothing was silently dropped, proxied, or self-downgraded; and no cited constraint went without a real attempt first.
 
 ### 8.5. Independent re-execution of the critical path (unbiased corroboration)
-For **critical-path / money-state items only**, spawn a **fresh `general-purpose` subagent** — given only the frozen manifest's commands for those items + the staging target, **not** your run's results, evidence, or reasoning — and have it **re-execute** them and return the **raw outputs**. Then cross-check: each critical `pass` must be **corroborated by the independent run's raw output** (the two observations agree). A mismatch, or any critical `pass` the independent run **can't reproduce**, is a **GAP** that blocks a clean GO — investigate the discrepancy first (the gap between "verification says PASS" and "re-run says otherwise" is the most valuable signal, never ignore it). Record it in the report's *Independent re-execution* table. Scope to the critical path so it stays practical.
+For **critical-path / money-state items only**, spawn a **fresh `general-purpose` subagent** — given only the frozen manifest's commands for those items + the staging target, **not** your run's results, evidence, or reasoning — and have it **re-execute** them and return the **raw outputs**. Then cross-check: each critical `pass` must be **corroborated by the independent run's raw output** (the two observations agree). A mismatch, or any critical `pass` the independent run **can't reproduce**, is a **GAP** that blocks a clean GO — investigate the discrepancy first (the gap between "verification says PASS" and "re-run says otherwise" is the most valuable signal, never ignore it). Record it in the report's *Independent re-execution* table **and** persist it in `report.json` under the same item ID, with either `status=agree` / `status=GAP` or `acceptanceTestEquivalent=true` where a real black-box acceptance test supersedes the second run. Scope to the critical path so it stays practical.
 > This is **unbiased verification applied to execution, not review** (the executor doesn't self-certify; a blind second context does). It is **strong corroboration, not a hard guarantee** — both are LLMs and can share a blind spot. The only hard guarantee is a **runnable black-box acceptance test** for the flow (executes against staging, green/red by code, not judgement); where such a test exists, it supersedes this step for that flow.
 **Done when:** every critical-path `pass` is corroborated by an independent blind re-run (outputs agree), or the discrepancy is surfaced as a GAP.
 
 ### 9. Report + fail-closed verdict
 Write the report ([test-report-template.md](references/test-report-template.md)). It **leads with a coverage ledger** (`approved N · executed X · blocked Y · not-run Z`) — never a "clean/objective" narrative over an incomplete run. Every bug carries **exact, copy-pasteable repro steps from a clean start** (literal commands, not a mechanism summary).
 
-Run **two-axis orphan detection**: **AC ↔ tests** and **changed-code ↔ tests** (from the step-5 map) — surface any uncovered AC, uncovered changed symbol, or unfounded/drift item. **Evidence-gate the AC matrix:** a runtime-behaviour AC on `code-read`/`unit:mocked` evidence alone is a **GAP** (needs ≥1 `observed-data`/`api`/`log`); an AC covered only by mocked tests needs ≥1 real-data corroboration of the same behaviour (the mock↔reality match — a contract test). Fill the **Open questions for PO** block from step-5 Jira↔code discrepancies.
+Run **two-axis orphan detection**: **AC ↔ tests** and **changed-code ↔ tests** (from the step-5 map) — surface any uncovered AC, uncovered changed symbol, or unfounded/drift item. **Evidence-gate the AC matrix:** a runtime-behaviour AC on `code-read`/`unit:mocked` evidence alone is a **GAP** (needs ≥1 `observed-data`/`api`/`log`); an AC covered only by mocked tests needs ≥1 real-data corroboration of the same behaviour (the mock↔reality match — a contract test). Encode the same AC matrix in `report.json` with stable `acId` + `coveringItemIds`, because `verify-evidence.sh` reads the sidecar rather than prose. Fill the **Open questions for PO** block from step-5 Jira↔code discrepancies.
 
 **Pre-verdict self-audit:** for every AC-pass and critical-path item, quote the raw output that proves **its own claim** — nothing to quote ⇒ GAP. Then run the **mechanical gates**:
 ```bash
@@ -131,9 +144,9 @@ Run **two-axis orphan detection**: **AC ↔ tests** and **changed-code ↔ tests
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-report.sh"   <report.md>                 # must print REPORT-OK
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-coverage.sh" <manifest.md> <report.md>   # must print COVERAGE-OK
 ```
-`verify-report.sh` fails on: an incomplete execution record, an unfilled `Prior-test basis` line, a bug with no exact repro, or a **clean ✅ GO that still has a `not executed` row**. `verify-coverage.sh` fails (set-diff against the frozen manifest) on: **any approved item with no result row OR marked `not executed`** (a skip — every approved item is non-skippable, guideline 3) or **any item not rooted in a defined journey** (guideline 2) — making "the report quietly dropped/skipped checks" and "the checklist was built from code, not journeys" mechanically impossible.
+`verify-report.sh` fails on: an incomplete execution record, an unfilled `Prior-test basis` line, a bug with no exact repro, or a **clean ✅ GO that still has a `not executed` row**. `verify-coverage.sh` fails (set-diff against the frozen manifest) on: **any approved item with no result row OR marked `not executed`** (a skip — every approved item is non-skippable, guideline 3) or **any item not rooted in a defined journey** (guideline 2) — making "the report quietly dropped/skipped checks" and "the checklist was built from code, not journeys" mechanically impossible. When `manifest.json` + `report.json` + `artifacts.json` exist, also run `verify-evidence.sh` so runtime AC, raw quotes, corroboration, and artifact refs are enforced structurally rather than only by prose.
 
-Write the report path into the run-state (`.claude/qa-run.json`, step 7) so the **merge-gate hook** enforces these three gates at the irreversible action. You run them here for early feedback, **but the binding enforcement is the hook, not this step** — even if this step were skipped, the hook blocks the merge until all three are green.
+Write the report into **both** `report.md` and the adjacent `report.json` sidecar, then update the active run-state (`.claude/qa-run.json`, step 7) so the **merge-gate hook** enforces these three gates at the irreversible action. The markdown is the human-readable audit artifact; the JSON sidecar carries the same item IDs / AC matrix / verdict data in machine-readable form for later gates. You run the shell gates here for early feedback, **but the binding enforcement is the hook, not this step** — even if this step were skipped, the hook blocks the merge until all three are green.
 
 **Verdict — fail-closed:** GO only if `CONTEXT-OK` **and** `REPORT-OK` **and** `COVERAGE-OK` **and** every critical-path `pass` is corroborated by the step-8.5 independent re-run (or guaranteed by a green acceptance test) **and** every exit criterion (core + project) is met against the fixed thresholds, not a fresh judgement at report time. Any open blocker/major, critical-path coverage <100%, a blocked/unrun critical item, an AC passing on sub-gate evidence, or a red regression → not a clean GO. `exploratory` caps at ⚠️ GO (exploratory); "GO with deferrals" only with mitigation + owner + fix-date per deferred item.
 
