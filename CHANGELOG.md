@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0] - 2026-08-19
+
+### Added
+- **Structured evidence gate — machine-readable QA sidecars enforced at the merge** (`scripts/verify-evidence.sh`
+  + `scripts/qa-bundle.sh`). Alongside the human-readable `manifest.md` / `report.md`, a run now emits JSON
+  sidecars (`manifest.json`, `report.json`, `artifacts.json`) co-located in a canonical bundle dir
+  (`runs/<task>/<run>/`). `verify-evidence.sh` validates the sidecars structurally: a runtime-behaviour AC
+  must have real `observed-data`/`api`/`log` evidence (not `code-read`/`unit:mocked` alone), each critical-path
+  `pass` must be corroborated by the step-8.5 independent re-run (or superseded by an `acceptanceTestEquivalent`
+  black-box test), every result row must carry a non-empty `rawQuote` or a valid `artifactRef`, and referenced
+  artifacts must exist in the index. `qa-bundle.sh` owns the canonical bundle paths + active run-state.
+- **Merge-gate now enforces `EVIDENCE-OK`** (`scripts/finalize-gate.sh`). When a run-state declares the JSON
+  sidecars, the PreToolUse hook runs `verify-evidence.sh` in addition to `CONTEXT-OK` / `REPORT-OK` /
+  `COVERAGE-OK`, and blocks the merge if a declared sidecar or the artifacts index is missing on disk. Fully
+  backward-compatible: the legacy `{manifest, report, branch}` run-state shape still works and skips the
+  evidence gate, so existing runs are unaffected.
+
+### Changed
+- **`test-iteration` step 7/8/8.5/9 now write both markdown and JSON sidecars** (`skills/test-iteration/SKILL.md`
+  + manifest/checklist/report templates). Step 7 creates the bundle via `qa-bundle.sh` and records the richer
+  sidecar-aware run-state; steps 8–9 persist each execution record, the AC matrix, and the independent
+  re-execution results into `report.json` keyed by the same item / AC IDs used in the markdown. Templates gained
+  `AC refs` and stable-ID/sidecar guidance so the two surfaces stay in lockstep.
+
 ## [2.22.0] - 2026-06-07
 
 ### Added

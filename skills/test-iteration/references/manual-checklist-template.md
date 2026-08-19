@@ -8,6 +8,7 @@
 **Test data / accounts:** <logins, roles, test cards, seeds>
 **What changed (1-2 lines):** <summary of changes>
 **Acceptance criteria (from jira-context):** <AC1, AC2, … one line each — or "AC missing/inferred — flagged">
+**Stable item IDs / journey refs:** every executable check must keep the same `ID` / `J#` pairing as the frozen manifest and the future `manifest.json` / `report.json` sidecars.
 
 ---
 

@@ -11,10 +11,26 @@
 # Wiring: hooks/hooks.json registers this on PreToolUse(Bash). It is a no-op unless (a) the command
 # is a git merge/push AND (b) a QA run-state file exists (written by test-iteration at steps 7 & 9).
 # So it never interferes with ordinary pushes when no QA is in progress — it only guarantees that,
-# once a QA run is started, you cannot merge it without CONTEXT-OK + REPORT-OK + COVERAGE-OK.
+# once a QA run is started, you cannot merge it without CONTEXT-OK + REPORT-OK + COVERAGE-OK
+# and, when JSON sidecars are present, EVIDENCE-OK.
 #
 # Run-state file (written by the skill): $CLAUDE_PROJECT_DIR/.claude/qa-run.json (override: $QA_RUN_STATE)
+# Legacy minimum:
 #   { "manifest": "<abs path>", "report": "<abs path>", "branch": "<name>" }
+# Richer sidecar-aware shape (backward-compatible):
+#   {
+#     "schemaVersion": 1,
+#     "runId": "...",
+#     "status": "approved|running|retesting|...",
+#     "manifest": "<abs path>",
+#     "manifestMd": "<abs path>",
+#     "manifestJson": "<abs path>",
+#     "report": "<abs path>",
+#     "reportMd": "<abs path>",
+#     "reportJson": "<abs path>",
+#     "branch": "<name>",
+#     "gates": {"context":"pending|green|red", ...}
+#   }
 #
 # Exit: 0 = allow (not our concern / gates green) · 2 = BLOCK (gates red / report missing mid-run).
 set -uo pipefail
@@ -36,23 +52,36 @@ state="${QA_RUN_STATE:-$proj/.claude/qa-run.json}"
 # No QA run in progress -> this hook is a QA gate, not a general merge policy. Allow.
 [ -f "$state" ] || exit 0
 
-manifest="$(jq -r '.manifest // empty' "$state" 2>/dev/null || true)"
-report="$(jq -r '.report // empty' "$state" 2>/dev/null || true)"
+manifest="$(jq -r '.manifestMd // .manifest // empty' "$state" 2>/dev/null || true)"
+report="$(jq -r '.reportMd // .report // empty' "$state" 2>/dev/null || true)"
+manifest_json="$(jq -r '.manifestJson // empty' "$state" 2>/dev/null || true)"
+report_json="$(jq -r '.reportJson // empty' "$state" 2>/dev/null || true)"
 
 block() { echo "⛔ MERGE BLOCKED by QA gate: $*" >&2; echo "   (a QA run is active: $state)" >&2; exit 2; }
 
 [ -n "$manifest" ] && [ -f "$manifest" ] || block "no frozen checklist manifest found — approve a manifest (step 7) before merging"
 [ -n "$report" ] && [ -f "$report" ] || block "no test report yet — a QA run is in progress for this branch but has no report; finish it before merging"
+if [ -n "$manifest_json" ] && [ ! -f "$manifest_json" ]; then
+  block "manifestJson is declared in run-state but missing on disk — regenerate the sidecar before merging"
+fi
+if [ -n "$report_json" ] && [ ! -f "$report_json" ]; then
+  block "reportJson is declared in run-state but missing on disk — regenerate the sidecar before merging"
+fi
 
 # --- run the gates; any red blocks the merge ---
 fails=""
-"$here/verify-context.sh"  "$manifest"           >/dev/null 2>&1 || fails="$fails CONTEXT"
-"$here/verify-report.sh"   "$report"            >/dev/null 2>&1 || fails="$fails REPORT"
-"$here/verify-coverage.sh" "$manifest" "$report" >/dev/null 2>&1 || fails="$fails COVERAGE"
-
-if [ -n "$fails" ]; then
-  block "gate(s) not green:$fails — run them to see why (context not gathered, a dropped or not-executed checklist item, or an incomplete report). Fix and re-verify before merging."
+"$here/verify-context.sh"  "$manifest"             >/dev/null 2>&1 || fails="$fails CONTEXT"
+"$here/verify-report.sh"   "$report"               >/dev/null 2>&1 || fails="$fails REPORT"
+"$here/verify-coverage.sh" "$manifest" "$report"  >/dev/null 2>&1 || fails="$fails COVERAGE"
+if [ -n "$manifest_json" ] && [ -n "$report_json" ]; then
+  artifacts_json="$(jq -r '.artifactsIndexJson // empty' "$state" 2>/dev/null || true)"
+  [ -n "$artifacts_json" ] && [ -f "$artifacts_json" ] || block "artifactsIndexJson is required when manifestJson/reportJson are declared — regenerate the bundle before merging"
+  "$here/verify-evidence.sh" "$manifest_json" "$report_json" "$artifacts_json" >/dev/null 2>&1 || fails="$fails EVIDENCE"
 fi
 
-echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK) — merge allowed." >&2
+if [ -n "$fails" ]; then
+  block "gate(s) not green:$fails — run them to see why (context not gathered, a dropped or not-executed checklist item, an incomplete report, or invalid structured evidence). Fix and re-verify before merging."
+fi
+
+echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK${manifest_json:+ · EVIDENCE-OK}) — merge allowed." >&2
 exit 0
