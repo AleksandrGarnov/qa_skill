@@ -14,21 +14,31 @@ f="${1:?usage: verify-report.sh <report.md>}"
 viol=0
 fail() { echo "FAIL: $*"; viol=$((viol+1)); }
 
+# Localizable section/label anchors — EN + RU defaults, byte-safe (no Cyrillic char classes, which
+# break in C-locale awk; headings match their conventional capitalization). Override via env for
+# other languages or custom headings, e.g. QA_RE_RESULTS='Checklist results|Ergebnisse'.
+RESULTS_RE="${QA_RE_RESULTS:-Checklist results|Результаты[^|]*чек}"
+FOUND_RE="${QA_RE_FOUND:-Found bugs|Найденные[^|]*(баги|ошибки|дефекты)}"
+PRIOR_RE="${QA_RE_PRIOR:-Prior-test basis|Основа теста|Базис теста|Осно[^|]*ре-?тест}"
+VERDICT_RE="${QA_RE_VERDICT:-Verdict|Вердикт}"
+BASIS_VAL_RE="${QA_RE_BASIS_VALUE:-FRESH|RE-?TEST|ПОВТОРН|РЕ-?ТЕСТ|СВЕЖ}"
+NOTEXEC_RE="${QA_RE_NOTEXEC:-not executed|не выполн|не запуск}"
+
 # 1) Prior-test basis gate line is filled (a real FRESH / RE-TEST value, not a blank/placeholder).
-pt="$(grep -niE 'prior-test basis' "$f" | head -1 | cut -d: -f1)"
+pt="$(grep -nE "$PRIOR_RE" "$f" | head -1 | cut -d: -f1)"
 if [ -z "$pt" ]; then
   fail "Prior-test basis line missing"
 else
   ctx="$(sed -n "${pt},$((pt+5))p" "$f")"
-  printf '%s' "$ctx" | grep -qiE 'FRESH|RE-TEST' || fail "Prior-test basis not filled (no FRESH / RE-TEST value)"
+  printf '%s' "$ctx" | grep -qE "$BASIS_VAL_RE" || fail "Prior-test basis not filled (no FRESH / RE-TEST value)"
 fi
 
 # 2) Checklist results table: every data row must have a complete execution record —
 #    no empty cell, no unfilled <placeholder>. A data row is any table row in the section that
 #    is not the header or the separator — matching on a leading DIGIT let an alpha ID (A1, #1)
 #    skip the whole completeness check, so detect by position (skip header + separator) instead.
-rows="$(awk '
-  /^## Checklist results/ {insec=1; seen=0; next}
+rows="$(awk -v R="$RESULTS_RE" '
+  $0 ~ ("^## +(" R ")") {insec=1; seen=0; next}
   insec && /^## / {insec=0}
   insec && /^\|/ {
     c1=$0; sub(/^\|/,"",c1); split(c1,cf,"|"); id=cf[1]; gsub(/[[:space:]]/,"",id)
@@ -60,8 +70,8 @@ else
 fi
 
 # 3) Every Found-bug block must carry EXACT repro steps (>=1 real numbered step, not a placeholder).
-missing_repro="$(awk '
-  /^## Found bugs/ {insec=1; next}
+missing_repro="$(awk -v F="$FOUND_RE" '
+  $0 ~ ("^## +(" F ")") {insec=1; next}
   insec && /^## / {flush(); insec=0}
   insec && /^### / {flush(); hdr=$0; sub(/^### +/,"",hdr); inblock=1; have=0; next}
   insec && inblock {
@@ -81,7 +91,7 @@ fi
 # 4) A clean ✅ GO must not coexist with any 'not executed' approved item.
 #    Don't rely on a rigid `**Verdict:` prefix — `## Verdict\nGO`, `Result: GO`, or an emoji
 #    verdict must count too, or the check is trivially dodged by reformatting the verdict line.
-vln="$(grep -niE 'verdict' "$f" | head -1 | cut -d: -f1)"
+vln="$(grep -niE "$VERDICT_RE" "$f" | head -1 | cut -d: -f1)"
 if [ -n "$vln" ]; then
   vctx="$(sed -n "${vln},$((vln+3))p" "$f")"
 else
@@ -90,14 +100,14 @@ fi
 # clean GO = a GO token present AND no NO-GO / deferrals / exploratory qualifier nearby.
 if printf '%s' "$vctx" | grep -qE '(^|[^A-Z-])GO([^A-Z]|$)|✅' \
    && ! printf '%s' "$vctx" | grep -qiE 'NO-?GO|WITH DEFERRALS|deferral|exploratory'; then
-  notrun="$(awk '
-    /^## Checklist results/ {insec=1; seen=0; next}
+  notrun="$(awk -v R="$RESULTS_RE" -v NE="$NOTEXEC_RE" '
+    $0 ~ ("^## +(" R ")") {insec=1; seen=0; next}
     insec && /^## / {insec=0}
     insec && /^\|/ {
       c1=$0; sub(/^\|/,"",c1); split(c1,cf,"|"); id=cf[1]; gsub(/[[:space:]]/,"",id)
       if (id ~ /^:?-+:?$/) next
       if (!seen) { seen=1; next }
-      if (tolower($0) ~ /not executed/) c++
+      if ($0 ~ NE) c++
     }
     END {print c+0}
   ' "$f")"

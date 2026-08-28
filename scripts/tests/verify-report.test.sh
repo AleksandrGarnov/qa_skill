@@ -174,6 +174,33 @@ MD
 assert_eq "reformatted clean GO + not-executed -> exit 1" "1" "$(rc "$tmp/go_reformatted.md")"
 
 # Missing file -> exit 1
+# Localization (RU): a report following the template with Russian headings + basis line passes.
+cat > "$tmp/ru_ok.md" <<'MD'
+# Отчёт
+**Основа теста:** RE-TEST of LM-10213
+## Результаты по чек-листу
+| # | Пункт | Как | Итог | Evidence | Раунд | Факт |
+|---|-------|-----|------|----------|-------|------|
+| 1 | буфер | рефлексия | pass | observed-data | R1 | 14:28 |
+## Вердикт
+GO
+MD
+assert_eq "RU-headed complete report -> exit 0" "0" "$(rc "$tmp/ru_ok.md")"
+
+# Localization (RU): a clean GO over a 'не выполнен' row still blocks.
+cat > "$tmp/ru_notrun.md" <<'MD'
+# Отчёт
+**Основа теста:** RE-TEST
+## Результаты по чек-листу
+| # | Пункт | Как | Итог | Evidence | Раунд | Факт |
+|---|-------|-----|------|----------|-------|------|
+| 1 | a | x | pass | api | R1 | ok |
+| 2 | b | y | не выполнен | n/a | R1 | - |
+## Вердикт
+GO
+MD
+assert_eq "RU clean GO over 'не выполнен' -> exit 1" "1" "$(rc "$tmp/ru_notrun.md")"
+
 assert_eq "missing report -> exit 1" "1" "$(rc "$tmp/does-not-exist.md")"
 
 rm -rf "$tmp"

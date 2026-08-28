@@ -237,6 +237,41 @@ cat > "$tmp/man_metamorphic.md" <<'MD'
 MD
 assert_eq "metamorphic oracle -> exit 0" "0" "$(rc "$tmp/man_metamorphic.md" "$tmp/rep_one.md")"
 
+# Localization (RU): a code-as-oracle written in Russian trips the tripwire.
+cat > "$tmp/man_ru_code.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | balance-10 | hotCutoff() не вычитает (код) |
+MD
+assert_eq "RU code-as-oracle '(код)' -> exit 1" "1" "$(rc "$tmp/man_ru_code.md" "$tmp/rep_one.md")"
+
+# Localization (RU): a report whose results heading is Russian is still matched for coverage.
+cat > "$tmp/man_ru_ok.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | balance-10 | ручной расчёт |
+MD
+cat > "$tmp/rep_ru.md" <<'MD'
+# Отчёт
+## Результаты по чек-листу
+| # | Item | How | Result | Evidence | Round | Actual |
+|---|------|-----|--------|----------|-------|--------|
+| 1 | charge | run | pass | api-response | R1 | 90 |
+MD
+assert_eq "RU results heading matched for coverage -> exit 0" "0" "$(rc "$tmp/man_ru_ok.md" "$tmp/rep_ru.md")"
+
 # Missing manifest / report files -> exit 1
 assert_eq "missing manifest -> exit 1" "1" "$(rc "$tmp/nope.md" "$tmp/rep_full.md")"
 assert_eq "missing report -> exit 1" "1" "$(rc "$tmp/manifest.md" "$tmp/nope.md")"

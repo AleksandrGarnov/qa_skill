@@ -23,6 +23,10 @@ rep="${2:?usage: verify-coverage.sh <manifest.md> <report.md>}"
 [ -f "$man" ] || { echo "MANIFEST-MISSING: $man"; exit 1; }
 [ -f "$rep" ] || { echo "REPORT-MISSING: $rep"; exit 1; }
 
+# Localizable results-section heading (EN + RU default; override via env, e.g.
+# QA_RE_RESULTS='Checklist results|Ergebnisse'). Byte-safe — no Cyrillic char classes.
+RESULTS_RE="${QA_RE_RESULTS:-Checklist results|Результаты[^|]*чек}"
+
 viol=0
 fail() { echo "FAIL: $*"; viol=$((viol+1)); }
 
@@ -86,9 +90,10 @@ napproved=$(grep -c . "$tmp/approved" 2>/dev/null || true)
 
 # Best-effort TRIPWIRE for a source that is blatantly 'the code itself' — NOT a guarantee.
 # Independence is semantic (bash can't tell a real "hand calc: 100-10" from an invented "spec §4"),
-# so this only trips the obvious phrasings; TRUE independence is verified at the step-6.5 review.
-# Do not read a green here as "the oracle is independent" — read it as "not blatantly the code".
-impl_oracle='whatever the code|the code returns?|code returns?|returned by (the )?(code|impl|implementation)|implementation under test|^impl(ementation)?$|same as (the )?(code|impl|current|existing|prod)|dev said|what the dev|because the code|current behaviou?r|existing behaviou?r|system output|running app|the app returns?|as returned|what it returns?|actual output|observed output|matches (the )?(current|existing|prod|app)'
+# so this only trips the obvious phrasings (EN + common RU); TRUE independence is verified at the
+# step-6.5 review. Do not read a green here as "the oracle is independent" — read it as "not
+# blatantly the code". Byte-safe: no Cyrillic char classes/ranges (they break in C-locale grep).
+impl_oracle='whatever the code|the code returns?|code returns?|returned by (the )?(code|impl|implementation)|implementation under test|^impl(ementation)?$|same as (the )?(code|impl|current|existing|prod)|dev said|what the dev|because the code|current behaviou?r|existing behaviou?r|system output|running app|the app returns?|as returned|what it returns?|actual output|observed output|matches (the )?(current|existing|prod|app)|\(код\)|из кода|как в коде|что вернул код|что возвращает код|что отдаёт код|текущ[^|]*поведени|как сейчас|вывод системы|совпадает с (кодом|реализац)|как в проде|как в реализации'
 
 # every item must carry a journey ref that exists in ## Journeys, AND an independent oracle
 while IFS=$'\t' read -r id jr src; do
@@ -107,8 +112,8 @@ while IFS=$'\t' read -r id jr src; do
 done < "$tmp/items"
 
 # --- report results: ID -> terminal status (## Checklist results; columns by header) ---
-awk '
-  /^## Checklist results/ {insec=1; seen=0; idc=0; rc=0; next}
+awk -v R="$RESULTS_RE" '
+  $0 ~ ("^## +(" R ")") {insec=1; seen=0; idc=0; rc=0; next}
   insec && /^## / {insec=0}
   insec && /^\|/ {
     body=$0; sub(/^\|/,"",body); sub(/\|[[:space:]]*$/,"",body)
