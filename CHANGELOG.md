@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.29.0] - 2026-08-28
+
+### Added
+- **Test-oracle discipline — the expected result must be derived independently of the implementation**
+  (`test-iteration` SKILL.md + new `references/test-oracle.md` + manifest/checklist templates). The skill already
+  refused code-read/mocked evidence for a runtime AC; this closes the matching hole on the **expected** side. If
+  "expected" is just "whatever the code/dev returned", a green check only proves the code agrees with itself — a
+  mock one level up. For any computed / money / aggregated / state-transition AC, the expected value is now derived
+  **before the run from a source that isn't the implementation** (spec/formula, hand calc, known invariant,
+  reference implementation, trusted historical figure) and its source is recorded; the pass is "raw observation ==
+  independently-derived expected", not "a number came back and it looks plausible".
+- **Metamorphic / property invariants for oracle-hard cases.** When the correct output genuinely can't be
+  pre-computed (search relevance, ML output, complex transforms, non-deterministic order), the skill now falls back
+  to asserting an invariant / input→output relation (conservation, idempotence, round-trip, monotonicity,
+  permutation-invariance, cross-path consistency, bounds) instead of "looks reasonable".
+- **Enforced across the workflow, not just stated:** step-5 triage defines the oracle per check; the manifest and
+  checklist carry an `Expected source (independent of the impl)` column; step-6.5 completeness review flags any
+  computed/money/state item whose expected isn't independently derived (nor covered by a metamorphic invariant);
+  step-8 execution and the step-9 self-audit bucket a `pass` only when the observation matches that independent
+  expected / the invariant holds.
+
 ## [2.28.0] - 2026-08-28
 
 ### Added
