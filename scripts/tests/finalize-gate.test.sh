@@ -33,6 +33,8 @@ PR #3146: reviewer flagged Redis desync. Jira: dev says repair runs on worker.
 FRESH — first test (prior-tests.sh = NONE)
 ### Research (Exa)
 Octane RollbackOpenTransactions leaks tx across requests -> item 1.
+### Adversarial
+Landed: double-spend via concurrent /charge -> item 1 (repro test attached). Not landed: negative amount rejected.
 ## Journeys
 | J | Actor | Action | Outcome |
 |---|-------|--------|---------|

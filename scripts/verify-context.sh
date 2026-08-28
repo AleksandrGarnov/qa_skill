@@ -9,6 +9,7 @@
 #   - Discussion  (GitHub PR + Jira comments)  -> guideline 1   (fetched content, or "no PR"/"no ticket")
 #   - Prior tests                              -> guideline 4   (must state FRESH or RE-TEST)
 #   - Research (Exa)                           -> guideline 2   (findings, or "research skipped: <reason>")
+#   - Adversarial (break-it pass, step 4.5)                     (attacks dispositioned, or "no attacks landed")
 # (Guideline 2's "user-flow first" journey-rooting is enforced by verify-coverage.sh;
 #  guideline 3 "never skip an item" by verify-coverage.)
 #
@@ -66,8 +67,13 @@ r="$(block 'research')"
 if [ -z "$r" ]; then fail "guideline 2: no Research block — always run Exa for the checklist (or state 'research skipped: <reason>')"
 elif [ "${r%%$'\t'*}" != "1" ]; then fail "guideline 2: Research block is empty — run Exa (or state 'research skipped: <reason>')"; fi
 
+# Step 4.5 — Adversarial break-it pass present (attacks dispositioned, or an explicit "no attacks landed")
+a="$(block 'adversarial')"
+if [ -z "$a" ]; then fail "step 4.5: no Adversarial block — run the break-it subagent and disposition its attacks (or state 'no attacks landed')"
+elif [ "${a%%$'\t'*}" != "1" ]; then fail "step 4.5: Adversarial block is empty — run the break-it subagent (or state 'no attacks landed' after a real pass)"; fi
+
 if [ "$viol" -eq 0 ]; then
-  echo "CONTEXT-OK: discussion + prior-tests + research gathered before approval"
+  echo "CONTEXT-OK: discussion + prior-tests + research + adversarial gathered before approval"
   exit 0
 fi
 echo "---"

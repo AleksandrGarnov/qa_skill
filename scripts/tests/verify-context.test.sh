@@ -24,6 +24,8 @@ PR #3146: reviewer flagged Redis desync window. Jira QA-9735: dev says repair ru
 RE-TEST of QA-9735-2026-06-04.md@92e314ad8 — carried R1 findings: BUG-01 balance drift (open).
 ### Research (Exa)
 Octane RollbackOpenTransactions leaks tx across requests -> item 3; Sanctum token visibility -> item 5.
+### Adversarial
+Landed: double-spend via concurrent /charge in the window -> item 7 (repro test attached). Not landed: negative amount rejected -> hardening item 8.
 ## Items
 | ID | Must | Journey | What to run | Expected |
 |----|------|---------|-------------|----------|
@@ -41,6 +43,8 @@ PR: no PR for this branch. Jira QA-1: no comments.
 FRESH — first test (prior-tests.sh = NONE)
 ### Research (Exa)
 research skipped: no search tool on this install
+### Adversarial
+no attacks landed — ran boundary/concurrency/isolation probes, none broke the service
 ## Items
 | ID | Must | Journey | What to run | Expected |
 |----|------|---------|-------------|----------|
@@ -56,6 +60,8 @@ cat > "$tmp/no_disc.md" <<'MD'
 FRESH
 ### Research (Exa)
 findings here
+### Adversarial
+no attacks landed
 ## Items
 | ID | Must | Journey | What | Exp |
 MD
@@ -71,6 +77,8 @@ cat > "$tmp/empty_disc.md" <<'MD'
 FRESH
 ### Research (Exa)
 findings
+### Adversarial
+no attacks landed
 ## Items
 | ID | Must | Journey | What | Exp |
 MD
@@ -86,6 +94,8 @@ PR comments fetched here.
 checked, looks fine
 ### Research (Exa)
 findings
+### Adversarial
+no attacks landed
 ## Items
 | ID | Must | Journey | What | Exp |
 MD
@@ -99,10 +109,44 @@ cat > "$tmp/no_research.md" <<'MD'
 PR comments here.
 ### Prior tests
 FRESH
+### Adversarial
+no attacks landed
 ## Items
 | ID | Must | Journey | What | Exp |
 MD
 assert_eq "missing research -> exit 1" "1" "$(rc "$tmp/no_research.md")"
+
+# Missing Adversarial block -> FAIL
+cat > "$tmp/no_adversarial.md" <<'MD'
+# Checklist manifest
+## Context
+### Discussion
+PR comments here.
+### Prior tests
+FRESH
+### Research (Exa)
+findings
+## Items
+| ID | Must | Journey | What | Exp |
+MD
+assert_eq "missing adversarial -> exit 1" "1" "$(rc "$tmp/no_adversarial.md")"
+
+# Adversarial block present but empty (only a placeholder) -> FAIL
+cat > "$tmp/empty_adversarial.md" <<'MD'
+# Checklist manifest
+## Context
+### Discussion
+PR comments here.
+### Prior tests
+FRESH
+### Research (Exa)
+findings
+### Adversarial
+<the break-it pass results here>
+## Items
+| ID | Must | Journey | What | Exp |
+MD
+assert_eq "empty adversarial (placeholder) -> exit 1" "1" "$(rc "$tmp/empty_adversarial.md")"
 
 # No ## Context section at all -> FAIL
 cat > "$tmp/none.md" <<'MD'

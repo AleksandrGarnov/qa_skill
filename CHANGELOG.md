@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.0] - 2026-08-28
+
+### Added
+- **Adversarial break-it pass — a subagent whose sole goal is to prove the service breaks** (`test-iteration`
+  step 4.5). A fresh `general-purpose` subagent attacks the whole service the change touches on staging (data
+  loss/corruption, concurrent-action-in-the-window, boundary/zero, compensation/retry mid-run,
+  out-of-order/duplicate/partial-failure, auth/tenant-isolation bypass, resource exhaustion) and, for **every
+  attack that lands, reproduces it as a runnable black-box test** — it **fixes nothing** (a landed break is a
+  finding, not a repair). Every returned attack (landed → FAIL-candidate item with its reproducing test;
+  not-landed → hardening/regression check) is folded into step 5's failure-modes and becomes a checklist item —
+  none dropped.
+- **Adversarial is now a gated `## Context` block** (`scripts/verify-context.sh` + manifest template). Alongside
+  Discussion / Prior-tests / Research, the manifest must carry a filled `### Adversarial` block (attacks
+  dispositioned, or an explicit `no attacks landed` after a real pass). `verify-context.sh` fails closed if it's
+  missing or empty, so the break-it pass is a **non-skippable input** — enforced at approval and re-checked by the
+  merge-gate hook, not left to prose.
+
+### Changed
+- **API-first is now an explicit principle** (`test-iteration` SKILL.md). Anything reachable through the API is
+  exercised **and** observed through the API; `tinker`/`repl`/`cli` (or the browser/UI) is a fallback of last
+  resort — only when the behaviour genuinely can't be triggered or verified via the API, and never to reconstruct
+  the whole flow. The adversarial pass follows the same rule.
+
 ## [2.23.0] - 2026-08-19
 
 ### Added
