@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.32.0] - 2026-08-28
+
+### Added (harden the weakest link — the LLM verifiers the whole skill relies on)
+- **Verifier-reliability discipline** (`test-iteration` steps 4.5/6.5/8.5 + new `references/verifier-reliability.md`).
+  The skill leans on LLM subagents to verify (completeness review, critical-path re-execution, adversarial pass),
+  and recent research documents their specific failure modes: **silent omission** (misses ~6–7× more than it
+  over-flags), **run-to-run non-determinism** (a lone verdict is often noise; temperature is deprecated on current
+  models, so "pin the knobs" no longer applies), and **over-correction / hallucination** (a break or bug it
+  invented). Three mitigations are now wired in:
+  - **Probe-gate the verifier on a known-correct control.** 8.5's blind re-run must reproduce a known-outcome
+    control (known-good green / known-bad red) before its `agree` counts; 6.5's review is handed a **planted known
+    gap** it must surface, or it isn't trusted. "The verifier was itself verified" is recorded.
+  - **Surface disagreement instead of averaging it.** On a borderline critical item where the blind run disagrees
+    with the executor, take one more independent sample, go with the majority, and record the disagreement rate.
+  - **Filter over-reporting through execution.** A 4.5 "break" the subagent asserts but can't reproduce with a
+    test that actually goes red is a hallucination — discarded, not filed. A review finding must name file:line +
+    a concrete failure scenario.
+  Grounded in the LLM-as-judge / oracle literature (silent-omission, temperature-reproducibility, and
+  code-reviewer-reliability studies). A new principle states it: the verifier is the weakest link — verify it too.
+
 ## [2.31.0] - 2026-08-28
 
 ### Changed (close the gap: the oracle rule is now a mechanical gate, not just prose)
