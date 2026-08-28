@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.34.0] - 2026-08-28
+
+### Changed (reduce instruction bloat — keep the whole contract executable)
+- **Slimmed `test-iteration/SKILL.md`** without dropping any of the contract. Six sessions of additions (API-first,
+  adversarial 4.5, oracle, combinatorial, verifier-reliability, TDM) had grown the principles and steps to the point
+  where the sheer length risks the model not carrying out the whole thing. Merged the duplicated "do everything
+  yourself" + "API-first" principles into one, and compressed the oracle / verifier-reliability principles and the
+  4.5/6.5/8.5 probe wording to the imperative — the detailed "why/how" already lives in the dedicated references
+  (`test-oracle.md`, `verifier-reliability.md`), which the slimmed text links to. No gate, step, or enforcement was
+  removed; every reference link resolves and all shell suites pass.
+
 ## [2.33.0] - 2026-08-28
 
 ### Added
