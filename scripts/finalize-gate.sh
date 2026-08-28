@@ -12,7 +12,7 @@
 # is a git merge/push AND (b) a QA run-state file exists (written by test-iteration at steps 7 & 9).
 # So it never interferes with ordinary pushes when no QA is in progress — it only guarantees that,
 # once a QA run is started, you cannot merge it without CONTEXT-OK + REPORT-OK + COVERAGE-OK
-# and, when JSON sidecars are present, EVIDENCE-OK.
+# and, when JSON sidecars are present, SIDECARS-OK (md/json item IDs agree) + EVIDENCE-OK.
 #
 # Run-state file (written by the skill): $CLAUDE_PROJECT_DIR/.claude/qa-run.json (override: $QA_RUN_STATE)
 # Legacy minimum:
@@ -83,6 +83,9 @@ if [ "$sidecar_aware" -eq 1 ]; then
   [ -n "$report_json" ] && [ -f "$report_json" ] || block "sidecar-aware QA run but reportJson is empty/missing on disk — regenerate the bundle (the evidence gate can't be skipped once a structured run is started)"
   artifacts_json="$(jq -r '.artifactsIndexJson // empty' "$state" 2>/dev/null || true)"
   [ -n "$artifacts_json" ] && [ -f "$artifacts_json" ] || block "artifactsIndexJson is required for a sidecar-aware run — regenerate the bundle before merging"
+  # md-only gates and the json-only evidence gate read different files — cross-check they agree first,
+  # so neither can pass on a picture the other doesn't share (out-of-sync item IDs across md/json).
+  "$here/verify-sidecars.sh" "$manifest" "$manifest_json" "$report" "$report_json" >/dev/null 2>&1 || fails="$fails SIDECARS"
   "$here/verify-evidence.sh" "$manifest_json" "$report_json" "$artifacts_json" >/dev/null 2>&1 || fails="$fails EVIDENCE"
 fi
 
@@ -90,5 +93,5 @@ if [ -n "$fails" ]; then
   block "gate(s) not green:$fails — run them to see why (context not gathered, a dropped or not-executed checklist item, an incomplete report, or invalid structured evidence). Fix and re-verify before merging."
 fi
 
-echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK${manifest_json:+ · EVIDENCE-OK}) — merge allowed." >&2
+echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK${manifest_json:+ · SIDECARS-OK · EVIDENCE-OK}) — merge allowed." >&2
 exit 0
