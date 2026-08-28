@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.37.0] - 2026-08-28
+
+### Fixed (gate localization — English-heading coupling false-blocked real non-English reports)
+- **`verify-report.sh` / `verify-coverage.sh` no longer hard-code English section headings.** Dogfooding the
+  gates on a real Russian project surfaced a **false-block**: a complete, GO report in the project's own format
+  (`## Результаты по чек-листу`, `**Вердикт:**`) FAILED `verify-report` because the gate only recognized
+  `## Checklist results` / `**Verdict:` — the results table was "not found" and a perfectly-tested feature would
+  be blocked at merge. The section/label anchors (results section, prior-test basis, found-bugs, verdict,
+  not-executed value) are now **EN + RU by default and env-configurable** (`QA_RE_RESULTS`, `QA_RE_PRIOR`,
+  `QA_RE_VERDICT`, `QA_RE_FOUND`, `QA_RE_BASIS_VALUE`, `QA_RE_NOTEXEC`), byte-safe (no Cyrillic char classes,
+  which break in C-locale awk/grep). A Russian-headed report following the template now passes; the
+  not-executed / clean-GO checks work in Russian too.
+- **Oracle tripwire de-English-centered.** `verify-coverage`'s code-as-oracle tripwire matched only English
+  phrasings, so a Russian source like `hotCutoff() не вычитает (код)` slipped through as "independent". Added the
+  common Russian code-as-oracle phrasings (still best-effort per 2.35.0 — true independence stays the step-6.5
+  semantic check).
+- Pinned by tests: RU-headed report passes; RU clean-GO over `не выполнен` blocks; RU `(код)` tripped; RU results
+  heading matched for coverage. English behavior unchanged. (Manifest headings `## Items`/`## Journeys`/`## Context`
+  stay English — skill-generated — and can be env-extended later if a team localizes the manifest too.)
+
 ## [2.36.0] - 2026-08-28
 
 ### Added (close the md↔json seam in the flow)
