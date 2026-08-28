@@ -24,11 +24,11 @@ cat > "$tmp/manifest.md" <<'MD'
 | J1 | customer | places a charge | balance debited |
 | J2 | admin | processes a payout | funds released |
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl -XPOST /api/charge` | balance-10 |
-| 2 | J1 | `curl -XPOST /api/refund` | balance+refund |
-| 3 | J2 | admin UI: approve payout #5515 | paid |
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl -XPOST /api/charge` | balance-10 | hand calc: 100-10 (spec §4) |
+| 2 | J1 | `curl -XPOST /api/refund` | balance+refund | invariant: refund credits back |
+| 3 | J2 | admin UI: approve payout #5515 | paid | spec: payout state=paid |
 MD
 
 # Report that accounts for all 3 ids -> COVERAGE-OK (0)
@@ -113,10 +113,10 @@ cat > "$tmp/man_nojourney.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl /api/charge` | ok |
-| 2 |  | `psql -c 'select ...'` | ok |
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | ok | spec |
+| 2 |  | `psql -c 'select ...'` | ok | spec |
 MD
 cat > "$tmp/rep_two.md" <<'MD'
 # Test Report
@@ -136,10 +136,10 @@ cat > "$tmp/man_badjourney.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl /api/charge` | ok |
-| 2 | J9 | `curl /api/refund` | ok |
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | ok | spec |
+| 2 | J9 | `curl /api/refund` | ok | spec |
 MD
 assert_eq "item refs undefined journey -> exit 1" "1" "$(rc "$tmp/man_badjourney.md" "$tmp/rep_two.md")"
 
@@ -150,11 +150,75 @@ cat > "$tmp/man_nojourneys.md" <<'MD'
 | J | Actor | Action | Outcome |
 |---|-------|--------|---------|
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl /api/charge` | ok |
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | ok | spec |
 MD
 assert_eq "zero journeys (code-rooted) -> exit 1" "1" "$(rc "$tmp/man_nojourneys.md" "$tmp/rep_two.md")"
+
+# --- Oracle gate (independent expected source) ---
+# Manifest with NO Expected source column -> FAIL (1)
+cat > "$tmp/man_nosrccol.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected |
+|----|---------|-------------|----------|
+| 1 | J1 | `curl /api/charge` | balance-10 |
+MD
+cat > "$tmp/rep_one.md" <<'MD'
+# Test Report
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | charge | `curl /api/charge` | pass | api-response | R1 | balance=90 |
+MD
+assert_eq "no Expected source column -> exit 1" "1" "$(rc "$tmp/man_nosrccol.md" "$tmp/rep_one.md")"
+
+# Item with an EMPTY expected source -> FAIL (1)
+cat > "$tmp/man_emptysrc.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | balance-10 |  |
+MD
+assert_eq "empty expected source -> exit 1" "1" "$(rc "$tmp/man_emptysrc.md" "$tmp/rep_one.md")"
+
+# Item whose oracle IS the implementation -> FAIL (1)
+cat > "$tmp/man_implsrc.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | balance-10 | whatever the code returns |
+MD
+assert_eq "impl-as-oracle -> exit 1" "1" "$(rc "$tmp/man_implsrc.md" "$tmp/rep_one.md")"
+
+# Metamorphic-rule oracle (no exact value) is a valid independent source -> exit 0
+cat > "$tmp/man_metamorphic.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | debit == credit | metamorphic: double-entry invariant |
+MD
+assert_eq "metamorphic oracle -> exit 0" "0" "$(rc "$tmp/man_metamorphic.md" "$tmp/rep_one.md")"
 
 # Missing manifest / report files -> exit 1
 assert_eq "missing manifest -> exit 1" "1" "$(rc "$tmp/nope.md" "$tmp/rep_full.md")"
