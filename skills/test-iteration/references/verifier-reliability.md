@@ -26,8 +26,19 @@ Before trusting a verifier's verdict, confirm it can tell right from wrong on a 
 - A **review finding must name `file:line` + a concrete failure scenario** (inputs → wrong output). A finding that can't state how it fails is speculative — mark it so, don't let it block on the reviewer's confidence alone.
 - Prefer the **hard oracle** wherever it exists: a runnable black-box acceptance test (green/red by code) supersedes any LLM verdict for that flow. LLM verification is corroboration; an executable check is proof. See [test-oracle.md](test-oracle.md).
 
+## The honest limit of this discipline (don't let the probe become theatre)
+
+Be clear-eyed about what these mitigations can and can't do. Probe-gating, disagreement, and the completeness review are **prompted of the same kind of model whose unreliability they address** — so a report that says "probe: known-good ✓" is only as trustworthy as a report that says "expected: independently derived", i.e. an LLM can assert it without it being true. A prose instruction is not a guarantee; nothing here mechanically proves the probe actually ran.
+
+So make the probe **executable, not a claim**:
+- The known-outcome control in 8.5 is a **real command with a real raw output** captured as an artifact (`artifactRef`) — the same evidence bar as any other item. "Probe passed" without a captured output is just another assertion; treat it as unverified.
+- The strongest form of every mitigation here is **something a human or a runnable check can re-confirm after the fact**: the control's raw output, the disagreement's two transcripts, the discarded-break's red test. Persist those, not just the verdict.
+- Where the flow has a **runnable black-box acceptance test**, it supersedes all of this — it's green/red by code, not by a model's word. Prefer building that over trusting a probe. See [test-oracle.md](test-oracle.md).
+
+Read this reference's guardrails as **raising the floor, not sealing the ceiling**: they make blatant verifier failure much less likely, but the only thing that *proves* correctness is executable evidence a second party can re-run.
+
 ## The bottom line
 
-Two LLMs (executor + verifier) can share a blind spot, so independent re-execution is **strong corroboration, not a guarantee**. The guardrails above — probe-gate the verifier, surface disagreement instead of averaging it, and filter claims through execution — are what keep "a second model looked at it" from being false confidence.
+Two LLMs (executor + verifier) can share a blind spot, so independent re-execution is **strong corroboration, not a guarantee**. The guardrails above — probe-gate the verifier, surface disagreement instead of averaging it, and filter claims through execution — keep "a second model looked at it" from being false confidence, but they don't turn it into proof. Only a runnable check does.
 
 > Sources: Barr, Harman, McMinn, Shahamiri, Yoo, *The Oracle Problem in Software Testing: A Survey* (IEEE TSE 2015); *Judging Is Not Enumerating: Silent Omissions in LLM-Authored Acceptable Sets* (2026) — omission dominates and gating on a known-correct probe cuts false-rejection from 58–92% to ≤5%; *Necessary but Not Sufficient: Temperature Control and Reproducibility in LLM-as-Judge* (2026) — run epochs >1 and report variance, the only mitigation surviving temperature deprecation; *Are LLMs Reliable Code Reviewers?* (2026) — richer prompts trade false acceptance for over-correction.

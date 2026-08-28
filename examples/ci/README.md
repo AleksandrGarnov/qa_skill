@@ -23,3 +23,8 @@ the agent doesn't control.
 
 A branch with **no active QA run** passes the job untouched — exactly like the local hook is a no-op
 outside a QA run. The gate only bites once `test-iteration` has frozen a manifest for the branch.
+
+> **Validation status:** the `jqr` state-parsing and gate-invocation logic has been run locally against a
+> real bundle (a green manifest+report yields `fail=0`; a red gate yields `fail=1`). It has **not** been
+> exercised on a live GitHub Actions runner — treat the `.yml` as a validated-logic template and smoke-test
+> it in your own pipeline before relying on it as a required check.

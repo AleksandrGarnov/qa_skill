@@ -24,6 +24,14 @@ Runs a git branch through a full pre-merge QA cycle and produces a fail-closed v
 
 ## Steps
 
+> **Open the reference before the step that needs it — a link you didn't `Read` is guidance you didn't get.** These steps deliberately keep the *method* in `references/*.md` and only the imperative here; that only works if you actually load them. `Read` the file at the **start** of the relevant step, not by name alone:
+> - **[test-oracle.md](references/test-oracle.md)** → before step 5's oracle definition and step 8's pass/fail call.
+> - **[test-design-techniques.md](references/test-design-techniques.md)** → before step 5's input & combination design.
+> - **[verifier-reliability.md](references/verifier-reliability.md)** → before spawning the 4.5 / 6.5 / 8.5 subagents.
+> - **[test-data-management.md](references/test-data-management.md)** → before writing step 6 preconditions/teardown and provisioning in step 8.
+> - the matching **[domain pack](references/domain-packs/)** → when the diff touches its domain (step 5).
+> - the templates ([manual-checklist](references/manual-checklist-template.md) · [checklist-manifest](references/checklist-manifest-template.md) · [test-report](references/test-report-template.md)) → when you build each artifact.
+
 ### 1. Context + prior-test history
 Read `CLAUDE.md`: stack, **base branch**, **staging target** (+ any version/commit endpoint), the **test-docs path**, and how testing is done here (adapt if it differs — e.g. CI-only). Invoke **`jira-context`** for the ticket's summary, AC (tagged explicit/inferred and runtime/static), repro, status, and **discussion** comments. The AC — not the diff — are the primary source of what to verify.
 

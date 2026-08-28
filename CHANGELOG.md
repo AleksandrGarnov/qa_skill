@@ -4,7 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.34.1] - 2026-08-28
+## [2.35.0] - 2026-08-28
+
+Self-audit fixes — addressing four "done badly" findings in one pass before a real-world validation run.
+
+### Added
+- **Progressive-disclosure is now an explicit imperative** (`test-iteration/SKILL.md`). Slimming the skill moved
+  method into `references/*.md`, but nothing made the model *open* them — so half the methodology risked being dead
+  prose it never read. Steps now open with a "**`Read` the reference before the step that needs it**" block that
+  names which file to load before which step (test-oracle → step 5/8, test-design-techniques → step 5,
+  verifier-reliability → 4.5/6.5/8.5, test-data-management → step 6/8, the domain pack → step 5, the templates when
+  building each artifact). A link you didn't open is guidance you didn't get.
+- **The honest limit of verifier-reliability is stated** (`references/verifier-reliability.md`). Probe-gating and
+  the completeness review are prompted of the same kind of model whose unreliability they address, so "probe: ✓"
+  is only as trustworthy as any other LLM assertion. The reference now says so plainly and requires the probe to
+  be **executable** (a real command whose raw output is captured as an artifact), not a claim — the guardrails
+  raise the floor, they don't seal the ceiling; only a runnable check is proof.
 
 ### Fixed (the oracle gate was a blacklist masquerading as a structural guarantee)
 - **`verify-coverage.sh` oracle check no longer over-claims.** The v2.31.0 "oracle gate" tripped only a fixed
@@ -20,6 +35,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Fixed a false-green test case.** The P0 disguised-skip test iterated a status of `n/r`, whose `/` made the
   fixture path a non-existent directory, so the case passed on "report missing" rather than on the status check.
   Replaced with `pending`.
+- **Validated the CI example's logic** (`examples/ci/README.md`). The `qa-gate.yml` state-parsing (`jqr`) and
+  gate-invocation were run locally against a real bundle (green manifest+report → `fail=0`, red gate → `fail=1`);
+  its README now records that status honestly and still flags that a live GitHub Actions smoke-test is recommended
+  before relying on it as a required check.
 
 ## [2.34.0] - 2026-08-28
 
