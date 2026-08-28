@@ -1,0 +1,70 @@
+# EXAMPLE — copy into YOUR project's .github/workflows/ and adapt the paths.
+#
+# Why: the plugin's PreToolUse hook (finalize-gate.sh) enforces the QA gates on a LOCAL
+# `git merge` / `git push`. If your team merges with the GitHub button or a CI job, that hook
+# never runs — and the run-state file lives on the developer's machine. This workflow re-runs the
+# same gates in CI as a REQUIRED status check, so a red-gate branch can't be merged regardless of
+# how the merge is triggered or which tool the agent used. It closes the "delete the run-state" /
+# "merge outside the hook regex" / "non-Bash merge" gaps that a local-only hook can't.
+#
+# Prerequisites:
+#   1. Vendor the gate scripts into your repo (e.g. copy qa_skill's scripts/ to tools/qa/scripts/)
+#      OR check out the plugin in a prior step. Set GATES below to wherever they live.
+#   2. Commit the run bundle for the branch under review so CI can see it — either the whole
+#      .claude/ run-state + bundle dir, or just the manifest/report md+json the state points at.
+#      (Adapt if your bundle lives elsewhere; the point is CI must be able to read them.)
+#   3. Mark this job as a required check on your protected branch (Settings → Branches).
+
+name: qa-gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  qa-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce QA gates (if a QA run is active for this branch)
+        env:
+          GATES: scripts            # <-- path to the vendored gate scripts in YOUR repo
+          STATE: .claude/qa-run.json
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$STATE" ]; then
+            echo "No active QA run-state ($STATE) — nothing to enforce. (A branch with no QA run passes, like the local hook.)"
+            exit 0
+          fi
+
+          jqr() { python3 -c "import json,sys;print(json.load(open('$STATE')).get('$1',''))"; }
+          manifest="$(jqr manifestMd || true)"; [ -n "$manifest" ] || manifest="$(jqr manifest)"
+          report="$(jqr reportMd || true)";     [ -n "$report" ]   || report="$(jqr report)"
+          manifest_json="$(jqr manifestJson)"
+          report_json="$(jqr reportJson)"
+          artifacts_json="$(jqr artifactsIndexJson)"
+
+          fail=0
+          run() { echo "== $1"; shift; "$@" || fail=1; }
+
+          run CONTEXT  bash "$GATES/verify-context.sh"  "$manifest"
+          run REPORT   bash "$GATES/verify-report.sh"   "$report"
+          run COVERAGE bash "$GATES/verify-coverage.sh" "$manifest" "$report"
+
+          # Sidecar-aware run -> the evidence gate is mandatory (mirrors finalize-gate.sh).
+          if [ -n "$manifest_json" ] || [ -n "$report_json" ]; then
+            if [ -f "$manifest_json" ] && [ -f "$report_json" ] && [ -f "$artifacts_json" ]; then
+              run EVIDENCE bash "$GATES/verify-evidence.sh" "$manifest_json" "$report_json" "$artifacts_json"
+            else
+              echo "::error::sidecar-aware run-state but a JSON sidecar/artifacts index is missing on disk"
+              fail=1
+            fi
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::QA gates are red — merge blocked. Fix the gaps and re-verify."
+            exit 1
+          fi
+          echo "QA gates green — merge allowed."

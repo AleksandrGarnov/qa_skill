@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.28.0] - 2026-08-28
+
+### Added
+- **CI workflow for the plugin itself** (`.github/workflows/tests.yml`) — runs the shell test suites,
+  syntax-checks every script, validates the plugin/marketplace/hooks JSON, and asserts `plugin.json`'s
+  version has a matching CHANGELOG section, on every push/PR to `main`. Enforcement no longer depends on a
+  maintainer remembering to run `run-all.sh` locally.
+- **CI enforcement example for user projects** (`examples/ci/qa-gate.yml` + `examples/ci/README.md`) — re-runs
+  the QA gates (`verify-context`/`report`/`coverage`/`evidence`) in CI as a required status check. This is the
+  real answer to a local-only hook's limits (a deleted run-state, a merge via the GitHub button / a non-Bash
+  tool / a command outside the hook regex): enforcement moves to branch protection, which the agent can't bypass.
+- **`uninstall.sh`** — reverses `install.sh`, removing only the symlinks that point back into this repo (a
+  same-named skill from another source is left untouched). Previously there was no documented removal path.
+
+### Changed
+- **README metadata synced** — version badge corrected (was stale at `2.21.1`), the placeholder install-count
+  TODO removed, and the merge-gate section now points at the CI enforcement example and the repo's own CI.
+
 ## [2.27.0] - 2026-08-28
 
 ### Added
