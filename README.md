@@ -28,7 +28,7 @@ branch → context (Jira AC) → review + research + adversarial break-it → ch
                              └─ merge-gate hook: blocks the merge while gates are red
 ```
 
-It runs on a **bare Claude Code install** — no plugins required. Richer tools (ruflo, Exa, Atlassian MCP) are optional upgrades, never hard dependencies.
+It runs on a **bare Claude Code install** — no plugins required. Richer tools (a specialized review plugin, Exa, a Jira MCP) are optional upgrades, never hard dependencies.
 
 ### Install
 
@@ -63,9 +63,9 @@ Each skill is independently invocable; `test-iteration` composes the others.
 
 Skills prefer richer tools but always end on something that works on a **bare Claude Code install** — no plugin silently no-ops:
 
-- **Code / security review:** `ruflo-core:reviewer` / `ruflo-security-audit` → built-in `/code-review` / `/security-review` → a `general-purpose` subagent acting as reviewer/auditor (always available).
+- **Code / security review:** an installed specialized review/security plugin (discovered by capability, not a hard-coded name) → built-in `/code-review` / `/security-review` → a `general-purpose` subagent acting as reviewer/auditor (always available).
 - **Research:** Exa MCP → `context7` → built-in `WebSearch` → only if truly nothing exists, a clear "research skipped" note.
-- **Jira context:** Atlassian MCP (`getJiraIssue`) → if absent or the key can't be resolved, ask the user to paste the ticket text. The ticket is never invented; missing acceptance criteria are flagged, not guessed.
+- **Jira context:** a Jira MCP (the get-issue tool is discovered by capability — official `getJiraIssue`, community `jira_get_issue`, or any namespace) → if absent or the key can't be resolved, ask the user to paste the ticket text. The ticket is never invented; missing acceptance criteria are flagged, not guessed.
 
 ### Bundled scripts (determinism)
 
@@ -104,7 +104,7 @@ The key must match the official Jira format `[A-Z][A-Z]+-[0-9]+` (two or more up
 
 ### Where acceptance criteria come from
 
-The ticket is fetched via the Atlassian MCP (`getJiraIssue`), pulling only the fields QA needs (summary, type, description, priority, components, links). **Acceptance criteria are read from the `description`** — parsed for `Given/When/Then` blocks, checklists, or numbered "must" statements (with a soft fallback to a dedicated AC custom field or a Checklist app if the project uses one).
+The ticket is fetched via the available Jira MCP (get-issue tool discovered by capability, any namespace), pulling only the fields QA needs (summary, type, description, priority, components, links). **Acceptance criteria are read from the `description`** — parsed for `Given/When/Then` blocks, checklists, or numbered "must" statements (with a soft fallback to a dedicated AC custom field or a Checklist app if the project uses one).
 
 - **AC present** → each becomes a discrete, id'd, checkable item (`AC1`, `AC2`, …).
 - **AC missing or partial** → flagged explicitly (`AC missing/inferred`). The skill does **not** silently invent coverage — missing criteria are a signal, not a license to guess.
@@ -173,7 +173,7 @@ cp -r scripts /path/to/project/.claude/skills/test-iteration/   # keep scripts r
 
 ### Requirements / dependencies
 
-For **full** functionality, **ruflo** (richer review), **Exa MCP** (richer research), and the **Atlassian MCP** (Jira ticket context) are recommended. But nothing is hard-required: the skills always fall back to built-ins (`/code-review`, `/security-review`, `WebSearch`) and ultimately to a `general-purpose` subagent, and `jira-context` falls back to a manual ticket paste — so they run on a bare Claude Code install. The minimal baseline is Claude Code itself and access to a git branch.
+For **full** functionality, **a specialized review plugin** (richer review), **Exa MCP** (richer research), and **a Jira MCP** (ticket context) are recommended. But nothing is hard-required: the skills always fall back to built-ins (`/code-review`, `/security-review`, `WebSearch`) and ultimately to a `general-purpose` subagent, and `jira-context` falls back to a manual ticket paste — so they run on a bare Claude Code install. The minimal baseline is Claude Code itself and access to a git branch.
 
 ## Usage
 
@@ -194,11 +194,11 @@ Skills are code that runs locally with your privileges — review before install
 What this skill does, so you can audit it:
 
 - **Runs git commands** (`git fetch`, `git checkout`, `git status`, `git log`, diffs) against your repository.
-- **Invokes review tools** — `ruflo-core:reviewer` / `ruflo-security-audit` if present, otherwise the built-in `/code-review` and `/security-review`.
+- **Invokes review tools** — an installed specialized review/security plugin if present, otherwise the built-in `/code-review` and `/security-review`.
 - **Spawns a `general-purpose` subagent** to independently review the *checklist itself* for completeness before you see it (step 6.5) — fresh context, given only the inputs, asked what's missing/unfounded.
 - **Spawns an adversarial `general-purpose` subagent** (step 4.5) whose sole goal is to **break the running service** on staging — it attacks the change (data loss, concurrency-in-the-window, boundary, isolation bypass, …), reproduces every landed break as a runnable black-box test (API-first; Tinker/REPL only when the API can't verify it), and **fixes nothing**; each attack becomes a checklist item.
 - **Fetches third-party content from the web** via Exa MCP (`mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa`) or the `context7`/`WebSearch` fallbacks, for best-practices research.
-- **Reads a Jira ticket** (read-only) via the Atlassian MCP (`getJiraIssue`) to pull acceptance criteria and repro steps, when the branch resolves to an issue key. Falls back to asking you to paste the ticket.
+- **Reads a Jira ticket** (read-only) via the available Jira MCP (get-issue tool discovered by capability) to pull acceptance criteria and repro steps, when the branch resolves to an issue key. Falls back to asking you to paste the ticket.
 - **Runs the approved checklist on a staging environment** (browser automation, API/status/log checks).
 - **Optionally posts a QA summary comment** back to the ticket (`addCommentToJiraIssue`) as the final step — but only after showing you the exact text and getting your explicit "yes". Skipped silently if you decline or the MCP is absent.
 
@@ -216,4 +216,4 @@ It does not declare a broad `allowed-tools: Bash(*)` and contains no dynamic-con
 
 > **About portability.** It is important to distinguish two things here:
 > - **Security (stays as is):** the skills contain **no hardcoded secrets, internal test-environment URLs, tickets, credentials, or internal service names.** The project supplies the specifics itself from its own `CLAUDE.md`.
-> - **Tool dependencies:** the `test-iteration` skill is **not fully tool-agnostic** — it is optimized for ruflo, Exa MCP, and the Atlassian MCP. These dependencies are **optional** and degrade through fallbacks (`/code-review`, `/security-review`, `context7`/`WebSearch`, and a manual ticket paste for Jira); unavailable steps are marked as skipped or downgraded, and the skill does not crash.
+> - **Tool dependencies:** the `test-iteration` skill is **not fully tool-agnostic** — it is optimized for a specialized review plugin, Exa MCP, and a Jira MCP. These dependencies are **optional** and degrade through fallbacks (`/code-review`, `/security-review`, `context7`/`WebSearch`, and a manual ticket paste for Jira); unavailable steps are marked as skipped or downgraded, and the skill does not crash.

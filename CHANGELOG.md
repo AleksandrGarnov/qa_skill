@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.26.0] - 2026-08-28
+
+### Fixed (tool discovery — stop hard-coding tool names that don't exist on most installs)
+- **`jira-context` now discovers the Jira get-issue tool by capability instead of a single hard-coded name.**
+  It previously did `ToolSearch select:mcp__plugin_atlassian_atlassian__getJiraIssue` and called `getJiraIssue` —
+  a name that doesn't match the community `mcp-atlassian` server (`jira_get_issue` / `mcp__jira__*`) present on
+  many installs, so a working Jira MCP was silently skipped and the run fell to manual paste. It now keyword-searches
+  (`ToolSearch query:"jira get issue"`) and calls whatever get-issue tool returns, any namespace. The AC custom-field
+  step is likewise discovery-based, not a hard-coded `getJiraIssueTypeMetaWithFields`.
+- **`branch-review` no longer names a specific (non-existent) reviewer plugin.** The chain referenced
+  `ruflo-core:reviewer` / `ruflo-security-audit`, which exist nowhere in the repo — dressing a 2-tier chain
+  (`/code-review` → subagent) as 3. It now says "an installed specialized review/security plugin, if any" and
+  requires recording **which tier ran** (specialized / built-in / subagent), so a report can't imply a specialized
+  pass when only the bare-install fallback fired.
+- **`qa-research` now emits the same evidence vocabulary as `test-iteration`.** It tagged checks `evidence: static`,
+  a value absent from the evidence enum (`observed-data`/`api-response`/`log`/`code-read`/`unit:mocked`/`unit:integration`),
+  so a `static` check didn't map onto the report's evidence column or `verify-evidence.sh`. `static` is now `code-read`,
+  and the skill points at the shared vocabulary so a check drops straight into the evidence-gate.
+
 ## [2.25.0] - 2026-08-28
 
 ### Fixed (gate hardening — closes evasion paths in the enforcement layer)

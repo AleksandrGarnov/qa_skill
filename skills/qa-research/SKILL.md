@@ -32,10 +32,10 @@ Pick the first available search tool. The last option works on a bare Claude Cod
 Each finding must be actionable, sourced, and **turnable into a check whose pass needs a real observation** — not a note someone nods at. Phrase it as an **observable signal**, and tag the evidence type that would verify it (so it slots straight into `test-iteration`'s evidence-gate):
 
 ```
-<recommendation> | check: <observable signal to verify> | evidence: observed-data|api-response|log|static | applies to: <area/behaviour> | source: <URL>
+<recommendation> | check: <observable signal to verify> | evidence: observed-data|api-response|log|code-read | applies to: <area/behaviour> | source: <URL>
 ```
 
-- `evidence: static` is for things settled by reading config/markup (e.g. a header is present); everything asserting **runtime behaviour** needs `observed-data`/`api-response`/`log` — a recommendation that can only be "confirmed" by reading the code is not yet a check.
+- Use the **same evidence vocabulary as `test-iteration`** (`observed-data`/`api-response`/`log`/`code-read`/`unit:mocked`/`unit:integration`) so a check drops straight into the evidence-gate. `evidence: code-read` is for things settled by reading config/markup/source (e.g. a header is present); everything asserting **runtime behaviour** needs `observed-data`/`api-response`/`log` — a recommendation that can only be "confirmed" by reading the code is not yet a runtime check.
 - **Disposition every concrete scenario you surfaced — never silently drop it.** A specific scenario a search turned up (a named failure mode, a documented gotcha) is either turned into an observable `check:` **or** carried as an explicit `rejected: <why it doesn't apply here>`. Only a genuinely vague, non-observable note is dropped — and even that you name, not vanish. "Ran the search, wrote one summary line" is a failed pass.
 
 **Done when:** every concrete scenario you surfaced is either an observable `check:` (with an `evidence:` type) or an explicit `rejected: <reason>`, specifics were drilled, and the result is sourced (or a clear "research skipped: <reason>" note).
