@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.36.0] - 2026-08-28
+
+### Added (close the md↔json seam in the flow)
+- **Sidecar consistency gate** (`scripts/verify-sidecars.sh` + `finalize-gate.sh` + `test-iteration` step 9). The
+  markdown gates (context/report/coverage) read `manifest.md` / `report.md`; the evidence gate reads
+  `manifest.json` / `report.json`. Nothing cross-checked the two, so a run could drift the sidecars out of sync —
+  an item present in one accounting with a different ID or missing from the other — and **every gate would still
+  pass, each on its own half of the picture**. `verify-sidecars.sh` fails closed when the item IDs (`## Items` ↔
+  `items[].id`) or result IDs (`## Checklist results` ↔ `results[].itemId`) disagree across md and json. Wired
+  into the merge-gate for sidecar-aware runs (now `CONTEXT-OK · REPORT-OK · COVERAGE-OK · SIDECARS-OK ·
+  EVIDENCE-OK`), with its own test suite (match, md-only item, json-only item, report mismatch, unparseable json,
+  numeric-vs-string IDs). Structural (same IDs), not semantic.
+
 ## [2.35.0] - 2026-08-28
 
 Self-audit fixes — addressing four "done badly" findings in one pass before a real-world validation run.
