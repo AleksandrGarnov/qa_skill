@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.33.0] - 2026-08-28
+
+### Added
+- **Test-data management lifecycle** (`test-iteration` steps 6/8 + new `references/test-data-management.md` +
+  checklist template). The skill mandated a fresh subject per scenario but never spelled out the rest of the
+  lifecycle that implies — and poor test data is the #1 cause of flaky results (~40% of failures) with ~70% of
+  teams having no strategy. Now covered: **identify → provision safely → isolate per run → validate → execute →
+  teardown/retire**. Provision synthetic / freshly-created data (never a raw production copy — masked non-prod
+  subset only if production-shape is needed, aligning with the never-touch-production rule); **isolate per run**
+  (the highest-leverage fix for flaky); and — the step everyone skips — **tear down what you created** (API
+  delete / rollback / snapshot reset) so staging doesn't rot into false positives for the next run. The
+  checklist's Test-data preconditions table gained a matching **teardown** column, making creation and cleanup one
+  decision.
+
 ## [2.32.0] - 2026-08-28
 
 ### Added (harden the weakest link — the LLM verifiers the whole skill relies on)
