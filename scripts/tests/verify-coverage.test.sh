@@ -56,7 +56,7 @@ MD
 assert_eq "item present but not executed -> exit 1" "1" "$(rc "$tmp/manifest.md" "$tmp/rep_notrun.md")"
 
 # BYPASS-3: a disguised skip status ('skipped'/'deferred') must NOT satisfy coverage (whitelist, not blacklist).
-for badstatus in skipped deferred wontfix later "n/r"; do
+for badstatus in skipped deferred wontfix later pending; do
   cat > "$tmp/rep_$badstatus.md" <<MD
 # Test Report
 ## Checklist results
@@ -205,6 +205,23 @@ cat > "$tmp/man_implsrc.md" <<'MD'
 | 1 | J1 | `curl /api/charge` | balance-10 | whatever the code returns |
 MD
 assert_eq "impl-as-oracle -> exit 1" "1" "$(rc "$tmp/man_implsrc.md" "$tmp/rep_one.md")"
+
+# Blatant code-as-oracle paraphrases the tripwire catches (NB: this is best-effort, not exhaustive —
+# true independence is a semantic check at step 6.5; the tripwire only trips obvious phrasings).
+for phrase in "matches current behavior" "= system output" "per the running app" "as returned" "existing behaviour"; do
+  cat > "$tmp/man_impl_para.md" <<MD
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | \`curl /api/charge\` | balance-10 | $phrase |
+MD
+  assert_eq "code-as-oracle paraphrase '$phrase' -> exit 1" "1" "$(rc "$tmp/man_impl_para.md" "$tmp/rep_one.md")"
+done
 
 # Metamorphic-rule oracle (no exact value) is a valid independent source -> exit 0
 cat > "$tmp/man_metamorphic.md" <<'MD'

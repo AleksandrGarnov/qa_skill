@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.34.1] - 2026-08-28
+
+### Fixed (the oracle gate was a blacklist masquerading as a structural guarantee)
+- **`verify-coverage.sh` oracle check no longer over-claims.** The v2.31.0 "oracle gate" tripped only a fixed
+  blacklist of phrasings, so `matches current behavior` / `= system output` / `per the running app` — all literally
+  "the code is its own oracle" — sailed through as "independent". That repeated the exact blacklist-vs-whitelist
+  antipattern this repo fixed for skip statuses in P0, and dressed a semantic property (is the source *really*
+  independent?) as a structural gate, giving false confidence. Now stated honestly: the gate is **structural only**
+  (column present + non-empty) plus a **best-effort tripwire** for blatant code-as-oracle phrasings (widened to
+  catch the paraphrases above); the header comment, the failure message, and the `COVERAGE-OK` line all say so.
+  **True independence is verified semantically at the step-6.5 review** (per this repo's "gates check completeness,
+  prose/review checks semantics" rule) — the review prompt now explicitly flags a `spec §4` that cites no spec, a
+  "hand calc" with no arithmetic, or an "invariant" that just restates the code.
+- **Fixed a false-green test case.** The P0 disguised-skip test iterated a status of `n/r`, whose `/` made the
+  fixture path a non-existent directory, so the case passed on "report missing" rather than on the status check.
+  Replaced with `pending`.
+
 ## [2.34.0] - 2026-08-28
 
 ### Changed (reduce instruction bloat — keep the whole contract executable)

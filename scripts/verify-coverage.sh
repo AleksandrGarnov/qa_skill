@@ -5,10 +5,14 @@
 #   1. No skipped items — every item ID in the frozen manifest has a result row in the report.
 #   2. Journey-rooted — every manifest item traces to a user journey defined in the manifest,
 #      and at least one journey exists (a checklist built from code concerns has no journeys).
-#   3. Oracle-independent — the ## Items table carries an "Expected source" column and every item
-#      names an expected value sourced from something OTHER than the implementation under test
-#      (a spec/hand-calc/invariant/reference/historical value, or a metamorphic rule). Blocks the
-#      "the code is its own oracle" trap that a green observation otherwise hides. See test-oracle.md.
+#   3. Oracle present (STRUCTURAL only) — the ## Items table carries an "Expected source" column and
+#      every item fills it (non-empty, non-placeholder), with a best-effort TRIPWIRE that trips the
+#      blatant "the code is its own oracle" phrasings. This is NOT a semantic guarantee of
+#      independence — bash can't tell a real "hand calc: 100-10" from an invented "spec §4". TRUE
+#      independence (is the source real, and actually independent of the impl?) is a SEMANTIC check,
+#      done at the step-6.5 review, per this repo's rule: gates check field completeness, prose/review
+#      checks semantics. A green here means "an oracle is declared and isn't blatantly the code",
+#      not "the oracle is sound". See test-oracle.md.
 #
 # Usage: verify-coverage.sh <manifest.md> <report.md>
 # Output: COVERAGE-OK (exit 0) or a list of violations (exit 1).
@@ -80,8 +84,11 @@ napproved=$(grep -c . "$tmp/approved" 2>/dev/null || true)
 # The oracle column must exist — every check needs an expected value sourced independently of the code.
 [ "$has_srccol" -eq 1 ] || fail "manifest ## Items has no 'Expected source' column — every check needs an oracle independent of the implementation (spec/hand-calc/invariant/reference/historical, or a metamorphic rule). See references/test-oracle.md"
 
-# an expected source that is really 'the code itself' — the code can't be its own oracle
-impl_oracle='whatever the code|the code returns?|code returns?|returned by (the )?(code|impl|implementation)|implementation under test|^impl(ementation)?$|same as (the )?(code|impl)|dev said|what the dev|because the code'
+# Best-effort TRIPWIRE for a source that is blatantly 'the code itself' — NOT a guarantee.
+# Independence is semantic (bash can't tell a real "hand calc: 100-10" from an invented "spec §4"),
+# so this only trips the obvious phrasings; TRUE independence is verified at the step-6.5 review.
+# Do not read a green here as "the oracle is independent" — read it as "not blatantly the code".
+impl_oracle='whatever the code|the code returns?|code returns?|returned by (the )?(code|impl|implementation)|implementation under test|^impl(ementation)?$|same as (the )?(code|impl|current|existing|prod)|dev said|what the dev|because the code|current behaviou?r|existing behaviou?r|system output|running app|the app returns?|as returned|what it returns?|actual output|observed output|matches (the )?(current|existing|prod|app)'
 
 # every item must carry a journey ref that exists in ## Journeys, AND an independent oracle
 while IFS=$'\t' read -r id jr src; do
@@ -94,7 +101,7 @@ while IFS=$'\t' read -r id jr src; do
   if [ "$has_srccol" -eq 1 ]; then
     case "$src" in
       ""|"<"*">") fail "manifest item $id has no Expected source — derive the expected value independently of the implementation (spec/hand-calc/invariant/reference/historical), or state a metamorphic rule (references/test-oracle.md)";;
-      *) printf '%s' "$src" | grep -qiE "$impl_oracle" && fail "manifest item $id uses the implementation as its own oracle ('$src') — a green check would only prove the code agrees with itself; derive expected from an independent source";;
+      *) printf '%s' "$src" | grep -qiE "$impl_oracle" && fail "manifest item $id names the implementation as its own oracle ('$src') — a green check would only prove the code agrees with itself; derive expected from an independent source. (This tripwire catches only blatant phrasings; the step-6.5 review checks true independence.)";;
     esac
   fi
 done < "$tmp/items"
@@ -153,7 +160,7 @@ if [ -n "$drift" ]; then
 fi
 
 if [ "$viol" -eq 0 ]; then
-  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each carries an oracle independent of the implementation"
+  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each declares an Expected source (independence verified semantically at step 6.5, not here)"
   exit 0
 fi
 echo "---"
