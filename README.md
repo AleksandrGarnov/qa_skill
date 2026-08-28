@@ -5,10 +5,9 @@
 You know the one: the AI writes the tests, everything's green, coverage hits the ceiling — and prod still goes down. Coverage lies, mocks test themselves, and a green CI lulls you to sleep. qa_skill doesn't let that slide. It runs a branch through a full QA cycle and **holds the gate**: a clean GO is blocked until every acceptance criterion is backed by a *raw observation* — not a code-read, not a mocked test. And it won't let the merge through while the gates are red.
 
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)
-![version](https://img.shields.io/badge/version-2.21.1-blue)
+![version](https://img.shields.io/badge/version-2.28.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/scripts-self--tested-success)
-<!-- TODO add install-count badge once listed in a marketplace -->
 
 <!-- Demo GIF: from the repo root run `vhs docs/demo.tape` to record docs/demo.gif (the merge-gate hook blocking a bad merge, then allowing it once the gates are green), then uncomment the line below. The .tape drives the real hook via docs/demo/merge-gate-demo.sh — nothing staged. -->
 <!-- ![qa_skill demo: the merge-gate hook blocks a merge while the QA gates are red, then allows it once they're green](docs/demo.gif) -->
@@ -88,6 +87,8 @@ All scripts have self-contained tests under `scripts/tests/` (no framework neede
 
 This plugin ships a **PreToolUse hook** (`hooks/hooks.json`) that fires before a branch-finalizing command (`git merge` / `git push` / `gh pr merge`) and **blocks it (exit 2)** while a QA run is active but its gates aren't green (`CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK`). This moves enforcement out of the agent's step list — a checklist item can't be skipped even if the agent skips running the gate. It is a **no-op unless `.claude/qa-run.json` exists** (written by `test-iteration` at approval), so ordinary pushes outside a QA run are never affected. If your project merges via PR/CI rather than locally, retarget the matcher in `hooks/hooks.json` (documented in `scripts/finalize-gate.sh`).
 
+The local hook only covers a **local** merge. For teams that merge with the GitHub button or a CI job — or to close the "delete the run-state / merge outside the hook" gaps a local-only hook can't — run the same gates in CI as a required check: see [`examples/ci/qa-gate.yml`](examples/ci/qa-gate.yml). This repo's own scripts are covered by a [CI workflow](.github/workflows/tests.yml) that runs the shell suites and validates the manifests on every PR.
+
 ## Jira-driven QA
 
 By default a QA cycle could only infer *what to test* from the diff and `CLAUDE.md` — which silently misses anything the change was supposed to do but didn't. `jira-context` closes that gap: tests are derived from the **acceptance criteria of the ticket behind the branch**, and the diff becomes the secondary source (what actually changed).
@@ -159,6 +160,8 @@ cd qa_skill
 ```
 
 A later `git pull` in this folder updates the skills automatically (symlink, not a copy). Note: bash + symlinks — not for native Windows; use Option A or B there.
+
+To remove the symlinks later, run `./uninstall.sh` from the same folder — it only unlinks entries that point back into this repo, leaving any same-named skill from another source untouched.
 
 ### Option D — per project (share with team via git)
 

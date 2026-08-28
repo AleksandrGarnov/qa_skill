@@ -1,0 +1,37 @@
+name: tests
+
+# Protects the product itself: the deterministic gate scripts and their self-tests.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shell-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax-check every script
+        run: |
+          for f in scripts/*.sh scripts/tests/*.sh *.sh; do
+            [ -e "$f" ] || continue
+            bash -n "$f"
+          done
+
+      - name: Run the shell test suites
+        run: bash scripts/tests/run-all.sh
+
+      - name: Validate plugin + marketplace manifests
+        run: |
+          python3 -m json.tool .claude-plugin/plugin.json >/dev/null
+          python3 -m json.tool .claude-plugin/marketplace.json >/dev/null
+          python3 -m json.tool hooks/hooks.json >/dev/null
+
+      - name: Check version / changelog are in lockstep
+        run: |
+          ver="$(python3 -c 'import json;print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          grep -q "^## \[$ver\]" CHANGELOG.md \
+            || { echo "::error::plugin.json version $ver has no matching '## [$ver]' section in CHANGELOG.md"; exit 1; }
+          echo "version $ver has a changelog entry"
