@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.30.0] - 2026-08-28
+
+### Added
+- **Combinatorial test-design techniques — choose inputs and combinations on purpose** (`test-iteration` step 5 +
+  new `references/test-design-techniques.md` + checklist template). "Coverage is what you executed" is only honest
+  if you also chose *which* values and *which* combinations to run. The skill now composes three techniques:
+  **equivalence partitioning** (one representative per class, not every value), **boundary value analysis**
+  (min−1/min/max/max+1), and **pairwise / combinatorial** (t=2 covers most interaction defects at a fraction of the
+  exhaustive cost; t=3 for a known-risky trio like `auth-state × role × feature-flag`). For a change with ≥3
+  interacting parameters/flags, "tested a few combos" or attempting the full product is replaced by a generated
+  pairwise set with impossible combinations excluded by constraints — and the coverage claim is recorded
+  ("pairwise over {…}, N cases, all 2-way pairs"). Grounded in ISTQB / ISO-IEC-IEEE 29119-4 / NIST combinatorial
+  studies. A silent "tested the main combinations" is a gap the step-6.5 review flags.
+
 ## [2.29.0] - 2026-08-28
 
 ### Added

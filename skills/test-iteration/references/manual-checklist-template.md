@@ -98,6 +98,7 @@ Rules:
 
 ## Edge cases / negative
 > ~80% of bugs live at boundaries and in negative cases, not in the happy path. Run the standard set for each input field / endpoint, then add feature-specific rows.
+> **Choose values and combinations deliberately** ([test-design-techniques.md](test-design-techniques.md)): equivalence partitioning picks one representative per class, boundary value analysis adds min−1/min/max/max+1. When the feature has **≥3 interacting parameters/flags**, don't test "a few combos" or the full product — add a **pairwise (t=2)** set over the representatives (t=3 for a known-risky trio), and record the coverage claim ("pairwise over {…}, N cases, all 2-way pairs; impossible pairs excluded").
 
 | # | Negative case | How to run | Expected result | Trace |
 |---|---------------|-----------|-----------------|-------|
