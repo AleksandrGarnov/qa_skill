@@ -38,12 +38,12 @@ Rules:
 
 > Start the run only after all entry criteria are met. If not met — testing is blocked.
 
-## Test-data preconditions (per item — prepare BEFORE the run)
-> Most `blocked` results are really "the data wasn't ready". List what each non-trivial check needs, so it's set up in advance instead of discovered as a block mid-run.
+## Test-data preconditions + teardown (per item — plan BEFORE the run) — [test-data-management.md](test-data-management.md)
+> Most `blocked` results are really "the data wasn't ready". List what each non-trivial check needs, so it's set up in advance instead of discovered as a block mid-run. **Provision a fresh, isolated subject per scenario** (synthetic / newly-created — never a raw production copy; a masked non-prod subset only if production-shape is required) and **plan its teardown in the same row** — creation and cleanup are one decision. Tests that create data must clean it up, or staging rots into false positives for the next run.
 
-| For item(s) | Account / role | Feature flag | Seed data / fixture | Env |
-|-------------|----------------|--------------|---------------------|-----|
-| <#…> | <…> | <flag=state> | <…> | <…> |
+| For item(s) | Account / role | Feature flag | Seed data / fixture (fresh & isolated) | Env | Teardown (how the created data is removed, or why safe to leave) |
+|-------------|----------------|--------------|----------------------------------------|-----|------------------------------------------------------------------|
+| <#…> | <new user/role> | <flag=state> | <created via real entry point> | <…> | <API delete / rollback / snapshot reset / retire> |
 
 ---
 
