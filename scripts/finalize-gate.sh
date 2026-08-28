@@ -56,16 +56,21 @@ manifest="$(jq -r '.manifestMd // .manifest // empty' "$state" 2>/dev/null || tr
 report="$(jq -r '.reportMd // .report // empty' "$state" 2>/dev/null || true)"
 manifest_json="$(jq -r '.manifestJson // empty' "$state" 2>/dev/null || true)"
 report_json="$(jq -r '.reportJson // empty' "$state" 2>/dev/null || true)"
+schema_version="$(jq -r '.schemaVersion // empty' "$state" 2>/dev/null || true)"
 
 block() { echo "⛔ MERGE BLOCKED by QA gate: $*" >&2; echo "   (a QA run is active: $state)" >&2; exit 2; }
 
 [ -n "$manifest" ] && [ -f "$manifest" ] || block "no frozen checklist manifest found — approve a manifest (step 7) before merging"
 [ -n "$report" ] && [ -f "$report" ] || block "no test report yet — a QA run is in progress for this branch but has no report; finish it before merging"
-if [ -n "$manifest_json" ] && [ ! -f "$manifest_json" ]; then
-  block "manifestJson is declared in run-state but missing on disk — regenerate the sidecar before merging"
-fi
-if [ -n "$report_json" ] && [ ! -f "$report_json" ]; then
-  block "reportJson is declared in run-state but missing on disk — regenerate the sidecar before merging"
+
+# A SIDECAR-AWARE run-state (schemaVersion set, or any sidecar path declared) MUST carry both JSON
+# sidecars + the artifacts index and pass EVIDENCE-OK. Keying "run the evidence gate" on BOTH
+# sidecars being non-empty let an empty reportJson silently opt out of the evidence gate mid-run —
+# and the agent writes this file. So once a structured run is started, an absent/empty sidecar is a
+# BLOCK, not a skip. A legacy {manifest,report,branch} state has none of these and legitimately skips.
+sidecar_aware=0
+if [ -n "$schema_version" ] || [ -n "$manifest_json" ] || [ -n "$report_json" ]; then
+  sidecar_aware=1
 fi
 
 # --- run the gates; any red blocks the merge ---
@@ -73,9 +78,11 @@ fails=""
 "$here/verify-context.sh"  "$manifest"             >/dev/null 2>&1 || fails="$fails CONTEXT"
 "$here/verify-report.sh"   "$report"               >/dev/null 2>&1 || fails="$fails REPORT"
 "$here/verify-coverage.sh" "$manifest" "$report"  >/dev/null 2>&1 || fails="$fails COVERAGE"
-if [ -n "$manifest_json" ] && [ -n "$report_json" ]; then
+if [ "$sidecar_aware" -eq 1 ]; then
+  [ -n "$manifest_json" ] && [ -f "$manifest_json" ] || block "sidecar-aware QA run but manifestJson is empty/missing on disk — regenerate the bundle (the evidence gate can't be skipped once a structured run is started)"
+  [ -n "$report_json" ] && [ -f "$report_json" ] || block "sidecar-aware QA run but reportJson is empty/missing on disk — regenerate the bundle (the evidence gate can't be skipped once a structured run is started)"
   artifacts_json="$(jq -r '.artifactsIndexJson // empty' "$state" 2>/dev/null || true)"
-  [ -n "$artifacts_json" ] && [ -f "$artifacts_json" ] || block "artifactsIndexJson is required when manifestJson/reportJson are declared — regenerate the bundle before merging"
+  [ -n "$artifacts_json" ] && [ -f "$artifacts_json" ] || block "artifactsIndexJson is required for a sidecar-aware run — regenerate the bundle before merging"
   "$here/verify-evidence.sh" "$manifest_json" "$report_json" "$artifacts_json" >/dev/null 2>&1 || fails="$fails EVIDENCE"
 fi
 

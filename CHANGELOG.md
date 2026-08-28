@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.25.0] - 2026-08-28
+
+### Fixed (gate hardening — closes evasion paths in the enforcement layer)
+- **`verify-coverage.sh` now whitelists terminal buckets instead of blacklisting two words.** Coverage
+  previously treated only `not executed`/empty as a skip, so a status of `skipped`/`deferred`/`wontfix`/`later`
+  sailed through as "done". It now accepts only `pass`/`fail`/`blocked`/`flaky`/`N/A` and fails on anything else —
+  the "no item skipped under any pretext" guarantee is now real, not a keyword denylist.
+- **`verify-report.sh` no longer keys completeness on a leading digit.** A non-numeric item ID (`A1`, `#1`) used
+  to skip the empty-cell/placeholder check entirely; data rows are now detected by table position (not header, not
+  separator). The clean-GO-over-`not executed` check also no longer requires the rigid `**Verdict:` prefix — a
+  `## Verdict\nGO`, `Result: GO`, or emoji verdict is recognized too.
+- **`verify-evidence.sh` normalizes the pass token and authenticates the acceptance-test escape hatch.** Keying the
+  requirements on the exact string `pass` let `passed`/`PASS` skip the raw-quote, runtime-evidence, and
+  corroboration checks — now any `pass*`/`ok` spelling triggers them. A self-asserted `acceptanceTestEquivalent`
+  no longer bypasses independent corroboration unless it is backed by a real artifact ref or an explicit
+  `acceptanceTestRef`.
+- **`finalize-gate.sh` — an empty `reportJson` can no longer silently disable the evidence gate.** The evidence gate
+  ran only when *both* sidecar paths were non-empty, so an empty `reportJson` in the (agent-written) run-state
+  opted out mid-run. A sidecar-aware run-state (schemaVersion or any sidecar declared) now hard-requires both JSON
+  sidecars + the artifacts index and blocks the merge otherwise. Legacy `{manifest,report,branch}` states are
+  unchanged and still skip the evidence gate.
+- **Each closed bypass is pinned by a new test** (`verify-coverage`/`verify-report`/`verify-evidence`/`finalize-gate`
+  test suites): disguised-skip statuses, alpha-ID rows, reformatted verdicts, `passed`-variant, unbacked
+  `acceptanceTestEquivalent`, and empty-`reportJson` opt-out.
+
 ## [2.24.0] - 2026-08-28
 
 ### Added

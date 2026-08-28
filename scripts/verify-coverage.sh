@@ -107,13 +107,20 @@ if [ -n "$missing" ]; then
   done <<< "$missing"
 fi
 
-# present-but-not-executed -> also a skip (guideline 3: no item skipped under any pretext).
-# A real bucket (pass/fail/blocked/N-A) is fine; 'not executed' / empty is not.
+# present-but-not-a-terminal-bucket -> also a skip (guideline 3: no item skipped under any pretext).
+# WHITELIST the legitimate terminal buckets (pass/fail/blocked/flaky/N/A) — anything else is a
+# disguised skip. A blacklist of just 'not executed' let 'skipped'/'deferred'/'wontfix'/'later'
+# sail through as "done"; the guarantee is only real if the allowed set is closed, not the denied set.
 while IFS= read -r aid; do
   [ -n "$aid" ] || continue
+  grep -qxF "$aid" "$tmp/accounted" || continue     # absent rows already failed above
   st="$(awk -F'\t' -v k="$aid" '$1==k{print $2; exit}' "$tmp/results")"
   case "$st" in
-    ""|*"not executed"*|"notexecuted") grep -qxF "$aid" "$tmp/accounted" && fail "approved item $aid is 'not executed'/empty — a skipped item (run it, or 'blocked' with a documented attempt)";;
+    pass*|fail*|blocked*|flaky*|n/a*|na|n-a*) : ;;   # valid terminal bucket
+    ""|*"not executed"*|"notexecuted")
+      fail "approved item $aid is 'not executed'/empty — a skipped item (run it, or 'blocked' with a documented attempt)";;
+    *)
+      fail "approved item $aid has status '$st' — not a recognized terminal bucket (pass/fail/blocked/flaky/N/A); a disguised skip (skipped/deferred/wontfix/…) does not satisfy coverage";;
   esac
 done < "$tmp/approved"
 
