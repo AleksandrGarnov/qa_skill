@@ -146,6 +146,33 @@ GO
 MD
 assert_eq "clean GO + all run -> exit 0" "0" "$(rc "$tmp/cleango_ok.md")"
 
+# BYPASS-4: a non-numeric / alpha item ID must NOT let empty cells escape the completeness check.
+cat > "$tmp/alpha_empty.md" <<'MD'
+# Test Report
+**Prior-test basis:** FRESH
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| A1 | balance reconciles |  |  |  |  |  |
+## Verdict
+NO-GO
+MD
+assert_eq "alpha-ID row with empty cells -> exit 1" "1" "$(rc "$tmp/alpha_empty.md")"
+
+# BYPASS-5: a clean GO written OUTSIDE the `**Verdict:` prefix must still block over a not-executed row.
+cat > "$tmp/go_reformatted.md" <<'MD'
+# Test Report
+**Prior-test basis:** FRESH
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | check A | `app a` | pass | observed-data | R1 | ok |
+| 2 | check B | `app b` | not executed | n/a | R1 | not run |
+## Verdict
+GO — shipping it
+MD
+assert_eq "reformatted clean GO + not-executed -> exit 1" "1" "$(rc "$tmp/go_reformatted.md")"
+
 # Missing file -> exit 1
 assert_eq "missing report -> exit 1" "1" "$(rc "$tmp/does-not-exist.md")"
 

@@ -55,6 +55,32 @@ cat > "$tmp/rep_notrun.md" <<'MD'
 MD
 assert_eq "item present but not executed -> exit 1" "1" "$(rc "$tmp/manifest.md" "$tmp/rep_notrun.md")"
 
+# BYPASS-3: a disguised skip status ('skipped'/'deferred') must NOT satisfy coverage (whitelist, not blacklist).
+for badstatus in skipped deferred wontfix later "n/r"; do
+  cat > "$tmp/rep_$badstatus.md" <<MD
+# Test Report
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | charge | \`curl -XPOST /api/charge\` | pass | api-response | R1 | balance=90 |
+| 2 | refund | \`curl -XPOST /api/refund\` | pass | api-response | R1 | balance=110 |
+| 3 | payout | — | $badstatus | n/a | R1 | skipped it |
+MD
+  assert_eq "disguised skip status '$badstatus' -> exit 1" "1" "$(rc "$tmp/manifest.md" "$tmp/rep_$badstatus.md")"
+done
+
+# Valid terminal buckets other than pass (fail/blocked/flaky/N/A with a qualifier) still satisfy coverage.
+cat > "$tmp/rep_buckets.md" <<'MD'
+# Test Report
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | charge | `curl -XPOST /api/charge` | fail | api-response | R1 | 500 error |
+| 2 | refund | `curl -XPOST /api/refund` | blocked — no staging access | n/a | R1 | attempted, no creds |
+| 3 | payout | admin UI | N/A (feature-flagged off) | n/a | R1 | n/a |
+MD
+assert_eq "valid buckets fail/blocked/N-A -> exit 0" "0" "$(rc "$tmp/manifest.md" "$tmp/rep_buckets.md")"
+
 # Report missing item 3 -> FAIL (1)
 cat > "$tmp/rep_missing.md" <<'MD'
 # Test Report

@@ -134,6 +134,51 @@ cat > "$tmp/report_missing_raw_quote.json" <<JSON
 JSON
 assert_eq "runtime pass without raw quote -> exit 1" "1" "$(rc "$tmp/manifest_good.json" "$tmp/report_missing_raw_quote.json" "$tmp/artifacts.json")"
 
+# BYPASS-8: 'passed' (not the exact string 'pass') must NOT skip the requirements.
+cat > "$tmp/report_passed_variant.json" <<JSON
+{
+  "schemaVersion": 1,
+  "results": [
+    {"itemId": "1", "result": "passed", "evidenceType": "observed-data", "round": "R1", "rawQuote": "balance=90", "artifactRefs": ["api-R1-1"]}
+  ],
+  "acMatrix": [
+    {"acId": "AC1", "status": "passed", "coveringItemIds": ["1"]}
+  ],
+  "independentReexecution": []
+}
+JSON
+assert_eq "'passed' variant still needs corroboration -> exit 1" "1" "$(rc "$tmp/manifest_good.json" "$tmp/report_passed_variant.json" "$tmp/artifacts.json")"
+
+# BYPASS-9: a self-asserted acceptanceTestEquivalent with NO backing artifact/ref must not bypass corroboration.
+cat > "$tmp/report_ate_unbacked.json" <<JSON
+{
+  "schemaVersion": 1,
+  "results": [
+    {"itemId": "1", "result": "pass", "evidenceType": "log", "round": "R1", "rawQuote": "trust me", "artifactRefs": [], "acceptanceTestEquivalent": true}
+  ],
+  "acMatrix": [
+    {"acId": "AC1", "status": "pass", "coveringItemIds": ["1"]}
+  ],
+  "independentReexecution": []
+}
+JSON
+assert_eq "unbacked acceptanceTestEquivalent -> exit 1" "1" "$(rc "$tmp/manifest_good.json" "$tmp/report_ate_unbacked.json" "$tmp/artifacts.json")"
+
+# acceptanceTestEquivalent backed by an explicit acceptanceTestRef (no artifactRefs) is honored -> exit 0.
+cat > "$tmp/report_ate_ref.json" <<JSON
+{
+  "schemaVersion": 1,
+  "results": [
+    {"itemId": "1", "result": "pass", "evidenceType": "log", "round": "R1", "rawQuote": "black-box suite green", "artifactRefs": [], "acceptanceTestEquivalent": true, "acceptanceTestRef": "tests/acceptance/charge_spec.rb::double_spend"}
+  ],
+  "acMatrix": [
+    {"acId": "AC1", "status": "pass", "coveringItemIds": ["1"]}
+  ],
+  "independentReexecution": []
+}
+JSON
+assert_eq "acceptanceTestEquivalent backed by ref -> exit 0" "0" "$(rc "$tmp/manifest_good.json" "$tmp/report_ate_ref.json" "$tmp/artifacts.json")"
+
 assert_eq "missing manifest json -> exit 1" "1" "$(rc "$tmp/nope_manifest.json" "$tmp/report_good.json" "$tmp/artifacts.json")"
 assert_eq "missing report json -> exit 1" "1" "$(rc "$tmp/manifest_good.json" "$tmp/nope_report.json" "$tmp/artifacts.json")"
 assert_eq "missing artifacts index -> exit 1" "1" "$(rc "$tmp/manifest_good.json" "$tmp/report_good.json" "$tmp/nope_artifacts.json")"

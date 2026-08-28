@@ -189,6 +189,12 @@ printf '{"schemaVersion":1,"runId":"run-01","status":"approved","branch":"featur
   "$tmp/runs/feature-x/run-01" "$tmp/manifest.md" "$tmp/manifest.md" "$tmp/manifest.json" "$tmp/report_green.md" "$tmp/report_green.md" "$tmp/report.json" "$tmp/nope_artifacts.json" > "$tmp/state_missing_artifacts.json"
 assert_eq "git merge, richer state missing artifacts index -> BLOCK (2)" "2" "$(rc "git merge feature/x" "$tmp/state_missing_artifacts.json")"
 
+# BYPASS-11: a sidecar-aware run-state (schemaVersion/manifestJson set) with an EMPTY reportJson
+# must not silently opt out of the evidence gate -> BLOCK (2), not allow.
+printf '{"schemaVersion":1,"runId":"run-01","status":"approved","branch":"feature/x","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"","artifactsIndexJson":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending"}}' \
+  "$tmp/runs/feature-x/run-01" "$tmp/manifest.md" "$tmp/manifest.md" "$tmp/manifest.json" "$tmp/report_green.md" "$tmp/report_green.md" "$tmp/runs/feature-x/run-01/artifacts.json" > "$tmp/state_empty_reportjson.json"
+assert_eq "sidecar-aware but empty reportJson -> BLOCK (2)" "2" "$(rc "git merge feature/x" "$tmp/state_empty_reportjson.json")"
+
 rm -rf "$tmp"
 echo "---"; echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

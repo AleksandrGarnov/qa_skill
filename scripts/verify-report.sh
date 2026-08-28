@@ -24,11 +24,18 @@ else
 fi
 
 # 2) Checklist results table: every data row must have a complete execution record —
-#    no empty cell, no unfilled <placeholder>.
+#    no empty cell, no unfilled <placeholder>. A data row is any table row in the section that
+#    is not the header or the separator — matching on a leading DIGIT let an alpha ID (A1, #1)
+#    skip the whole completeness check, so detect by position (skip header + separator) instead.
 rows="$(awk '
-  /^## Checklist results/ {insec=1; next}
+  /^## Checklist results/ {insec=1; seen=0; next}
   insec && /^## / {insec=0}
-  insec && /^\|[[:space:]]*[0-9]/ {print}
+  insec && /^\|/ {
+    c1=$0; sub(/^\|/,"",c1); split(c1,cf,"|"); id=cf[1]; gsub(/[[:space:]]/,"",id)
+    if (id ~ /^:?-+:?$/) next        # separator row
+    if (!seen) { seen=1; next }       # header row
+    print
+  }
 ' "$f")"
 
 if [ -z "$rows" ]; then
@@ -72,13 +79,26 @@ if [ -n "$missing_repro" ]; then
 fi
 
 # 4) A clean ✅ GO must not coexist with any 'not executed' approved item.
-verdict_line="$(grep -iE '^\*\*Verdict:' "$f" | head -1)"
-if printf '%s' "$verdict_line" | grep -q 'GO' \
-   && ! printf '%s' "$verdict_line" | grep -qiE 'NO-GO|WITH DEFERRALS|exploratory'; then
+#    Don't rely on a rigid `**Verdict:` prefix — `## Verdict\nGO`, `Result: GO`, or an emoji
+#    verdict must count too, or the check is trivially dodged by reformatting the verdict line.
+vln="$(grep -niE 'verdict' "$f" | head -1 | cut -d: -f1)"
+if [ -n "$vln" ]; then
+  vctx="$(sed -n "${vln},$((vln+3))p" "$f")"
+else
+  vctx="$(grep -E 'GO|✅|⛔|⚠' "$f")"
+fi
+# clean GO = a GO token present AND no NO-GO / deferrals / exploratory qualifier nearby.
+if printf '%s' "$vctx" | grep -qE '(^|[^A-Z-])GO([^A-Z]|$)|✅' \
+   && ! printf '%s' "$vctx" | grep -qiE 'NO-?GO|WITH DEFERRALS|deferral|exploratory'; then
   notrun="$(awk '
-    /^## Checklist results/ {insec=1; next}
+    /^## Checklist results/ {insec=1; seen=0; next}
     insec && /^## / {insec=0}
-    insec && /^\|[[:space:]]*[0-9]/ && tolower($0) ~ /not executed/ {c++}
+    insec && /^\|/ {
+      c1=$0; sub(/^\|/,"",c1); split(c1,cf,"|"); id=cf[1]; gsub(/[[:space:]]/,"",id)
+      if (id ~ /^:?-+:?$/) next
+      if (!seen) { seen=1; next }
+      if (tolower($0) ~ /not executed/) c++
+    }
     END {print c+0}
   ' "$f")"
   if [ "$notrun" -gt 0 ]; then

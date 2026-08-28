@@ -25,6 +25,12 @@ violations = []
 def fail(msg: str) -> None:
     violations.append(msg)
 
+def is_pass(v) -> bool:
+    # A pass is a pass however it's spelled — 'pass', 'passed', 'PASS', ' ok '.
+    # Keying the requirements on the exact string 'pass' let 'passed' skip every check.
+    n = str(v or '').strip().lower()
+    return n.startswith('pass') or n == 'ok'
+
 artifact_ids = {a.get('id') for a in artifacts.get('artifacts', []) if a.get('id')}
 results_by_item = {}
 for row in report.get('results', []):
@@ -44,7 +50,7 @@ runtime_evidence = {'observed-data', 'api-response', 'log'}
 
 for item_id, rows in results_by_item.items():
     for row in rows:
-        if row.get('result') == 'pass' and row.get('evidenceType') in runtime_evidence and not str(row.get('rawQuote', '')).strip():
+        if is_pass(row.get('result')) and row.get('evidenceType') in runtime_evidence and not str(row.get('rawQuote', '')).strip():
             fail(f"item {item_id} passes on runtime evidence but has no raw quote")
         for ref in row.get('artifactRefs', []) or []:
             if ref not in artifact_ids:
@@ -64,7 +70,7 @@ for ac_row in report.get('acMatrix', []):
     kind = str(ac.get('kind', '')).strip().lower()
     status = str(ac_row.get('status', '')).strip().lower()
     covering = [str(x) for x in (ac_row.get('coveringItemIds') or [])]
-    if kind != 'runtime' or status != 'pass':
+    if kind != 'runtime' or not is_pass(status):
         continue
 
     evidence_rows = []
@@ -75,7 +81,7 @@ for ac_row in report.get('acMatrix', []):
         fail(f"runtime AC {ac_id} passes but has no covering item results")
         continue
 
-    runtime_rows = [row for row in evidence_rows if row.get('result') == 'pass' and row.get('evidenceType') in runtime_evidence]
+    runtime_rows = [row for row in evidence_rows if is_pass(row.get('result')) and row.get('evidenceType') in runtime_evidence]
     if not runtime_rows:
         fail(f"runtime AC {ac_id} passes without observed/api/log evidence")
         continue
@@ -86,10 +92,22 @@ for ac_row in report.get('acMatrix', []):
 for item_id, item in items.items():
     if not item.get('criticalPath'):
         continue
-    rows = [row for row in results_by_item.get(item_id, []) if row.get('result') == 'pass']
+    rows = [row for row in results_by_item.get(item_id, []) if is_pass(row.get('result'))]
     if not rows:
         continue
-    if any(row.get('acceptanceTestEquivalent') for row in rows):
+    # acceptanceTestEquivalent is a self-asserted escape hatch from independent corroboration.
+    # Honor it ONLY when backed by a real artifact (a black-box test run in the index) or an
+    # explicit acceptanceTestRef — otherwise a bare `true` would silently drop corroboration.
+    ate_rows = [row for row in rows if row.get('acceptanceTestEquivalent')]
+    if ate_rows:
+        backed = any(
+            str(row.get('acceptanceTestRef', '')).strip()
+            or any(ref in artifact_ids for ref in (row.get('artifactRefs') or []))
+            for row in ate_rows
+        )
+        if backed:
+            continue
+        fail(f"critical-path item {item_id} claims acceptanceTestEquivalent but no backing artifact/acceptanceTestRef — a self-asserted flag cannot bypass corroboration")
         continue
     corroborated = False
     for row in reexec_by_item.get(item_id, []):
