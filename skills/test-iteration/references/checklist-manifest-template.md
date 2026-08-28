@@ -16,6 +16,9 @@
 ### Research (Exa)  *(guideline 2)*
 <the Exa findings turned into checks, each dispositioned — or `research skipped: <reason>` only if no search tool exists>
 
+### Adversarial (break-it pass — step 4.5)
+<the adversarial subagent's landed + not-landed attacks, each dispositioned into an item below: a landed break → a FAIL-candidate item with its reproducing test; a not-landed attack → a hardening/regression check. State `no attacks landed` only after a real pass ran — never leave this empty to skip the pass.>
+
 ## Journeys (the SPINE — define these FIRST)
 > Name the real user(s) — often layered: the actor who *creates* the data and the downstream *consumer* of the output. A journey is end-to-end: actor → real action → what it produces across stores → observable outcome the actor sees. If you can't name a journey, you're about to write a code-concern checklist — stop.
 
