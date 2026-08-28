@@ -24,6 +24,14 @@ Runs a git branch through a full pre-merge QA cycle and produces a fail-closed v
 
 ## Steps
 
+> **Open the reference before the step that needs it — a link you didn't `Read` is guidance you didn't get.** These steps deliberately keep the *method* in `references/*.md` and only the imperative here; that only works if you actually load them. `Read` the file at the **start** of the relevant step, not by name alone:
+> - **[test-oracle.md](references/test-oracle.md)** → before step 5's oracle definition and step 8's pass/fail call.
+> - **[test-design-techniques.md](references/test-design-techniques.md)** → before step 5's input & combination design.
+> - **[verifier-reliability.md](references/verifier-reliability.md)** → before spawning the 4.5 / 6.5 / 8.5 subagents.
+> - **[test-data-management.md](references/test-data-management.md)** → before writing step 6 preconditions/teardown and provisioning in step 8.
+> - the matching **[domain pack](references/domain-packs/)** → when the diff touches its domain (step 5).
+> - the templates ([manual-checklist](references/manual-checklist-template.md) · [checklist-manifest](references/checklist-manifest-template.md) · [test-report](references/test-report-template.md)) → when you build each artifact.
+
 ### 1. Context + prior-test history
 Read `CLAUDE.md`: stack, **base branch**, **staging target** (+ any version/commit endpoint), the **test-docs path**, and how testing is done here (adapt if it differs — e.g. CI-only). Invoke **`jira-context`** for the ticket's summary, AC (tagged explicit/inferred and runtime/static), repro, status, and **discussion** comments. The AC — not the diff — are the primary source of what to verify.
 
@@ -93,7 +101,7 @@ Then gate the manifest **before showing it for approval**:
 **Done when:** a journey-rooted manifest with a filled `## Context` (CONTEXT-OK) + items (ID + journey ref) + exit criteria including the mandatory core.
 
 ### 6.5. Independent completeness review
-Have a **fresh `general-purpose` subagent** — given only the inputs (diff, AC, the `changed-code → item` map, the matching **learned checks** (step 5), the checklist, the exit criteria), **not** your reasoning — report **what's missing or unfounded**: an uncovered AC, an uncovered changed symbol, an item with no AC/code basis, **a `qa-research` finding that became neither a checklist item nor a recorded reject**, **a matching learned check that wasn't folded into the checklist**, an `N/A` whose reason doesn't hold, **a computed/money/state item whose expected value is not derived independently of the implementation (and has no metamorphic invariant standing in for it)**, an exit criterion weaker than the core. Fold the real findings back; re-run once if material; cap at 2 rounds. No subagent → do a cold self-review in a separate, explicit pass and say so.
+Have a **fresh `general-purpose` subagent** — given only the inputs (diff, AC, the `changed-code → item` map, the matching **learned checks** (step 5), the checklist, the exit criteria), **not** your reasoning — report **what's missing or unfounded**: an uncovered AC, an uncovered changed symbol, an item with no AC/code basis, **a `qa-research` finding that became neither a checklist item nor a recorded reject**, **a matching learned check that wasn't folded into the checklist**, an `N/A` whose reason doesn't hold, **a computed/money/state item whose `Expected source` is not *genuinely* independent of the implementation** — this is the review's job, not the gate's: `verify-coverage` only trips blatant phrasings (`= system output`), so the reviewer must judge whether each source is *real and independent* (a `spec §4` that cites no actual spec, a "hand calc" with no arithmetic shown, or an "invariant" that just restates the code are all failures) — **and has no metamorphic invariant standing in for it**, an exit criterion weaker than the core. Fold the real findings back; re-run once if material; cap at 2 rounds. No subagent → do a cold self-review in a separate, explicit pass and say so.
 **Probe the reviewer** (silent omission is hard to catch — [verifier-reliability.md](references/verifier-reliability.md)): hand it a checklist with **one planted, known gap** (an uncovered AC / a changed symbol with no item). If the review doesn't surface it, it isn't sensitive enough to trust — strengthen the prompt and re-run before believing "nothing missing". Record the probe was caught.
 **Done when:** the reviewer caught the planted probe; the checklist passed an independent (or explicit self-) completeness review; gaps closed or recorded.
 
