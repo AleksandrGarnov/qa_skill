@@ -48,6 +48,7 @@ Rules:
 ---
 
 > **All test sections below are tables, one row per check** — columns: **# · What to check · How to run** (the *exact* command / UI steps / API call, verbatim) **· Expected result · Risk** (H/M/L) **· Trace** (AC / ticket). One row = one concrete, runnable check with a verifiable result.
+> **The Expected result must come from an oracle independent of the implementation** — a spec/formula, a hand calc, a known invariant, a reference implementation, or a trusted historical value; for a computed/money/state check, "whatever the code returns" is not a valid expected. When the exact answer can't be pre-computed (search relevance, ML, complex transforms, non-deterministic order), state a **metamorphic invariant** instead of a value (sum-of-parts == whole, idempotent replay, reverse-restores-input, reorder-changes-output-predictably). See [test-oracle.md](test-oracle.md).
 
 ## User journeys (the SPINE — fill this first)
 > The checklist is built from journeys, not from code concerns. **Name the user(s)** — often layered: the end-user whose actions create the data, AND the downstream consumer of the output (analyst/service/operator). Each journey is end-to-end: *actor → real action → what it produces across the system → run the feature → observable outcome the actor should see*. The technical/code-branch checks below (filters, type mapping, SQL clauses) are **sub-checks of a journey**, not standalone items. A journey passes only when it works for that user.

@@ -28,12 +28,12 @@
 | J2 | <downstream consumer> | <reads / acts on the output> | <output is correct & trustworthy> |
 
 ## Items (every item traces to a J above)
-> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **AC refs** must point at the acceptance-criteria IDs carried from `jira-context`, and the same refs go into `manifest.json`. **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
+> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **AC refs** must point at the acceptance-criteria IDs carried from `jira-context`, and the same refs go into `manifest.json`. **Expected + Expected source**: the expected result and where it was derived — a source that is **not the implementation under test** (spec/formula, hand calc, invariant, reference impl, trusted historical), or a **metamorphic invariant** for an oracle-hard item ([test-oracle.md](test-oracle.md)); an expected of "whatever the code returns" is not a valid oracle. **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
 
-| ID | Journey | AC refs | What to run (exact command / UI steps / API call) | Expected |
-|----|---------|---------|----------------------------------------------------|----------|
-| 1 | J1 | AC1 | <exact method> | <expected> |
-| 2 | J1 | AC2 | <exact method> | <expected> |
-| 3 | J2 | AC3 | <exact method> | <expected> |
+| ID | Journey | AC refs | What to run (exact command / UI steps / API call) | Expected | Expected source (independent of the impl) |
+|----|---------|---------|----------------------------------------------------|----------|-------------------------------------------|
+| 1 | J1 | AC1 | <exact method> | <expected value> | <spec §/hand calc/invariant/reference — or metamorphic rule> |
+| 2 | J1 | AC2 | <exact method> | <expected value> | <…> |
+| 3 | J2 | AC3 | <exact method> | <expected value> | <…> |
 
 > After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted.
