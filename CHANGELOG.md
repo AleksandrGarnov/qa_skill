@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.27.0] - 2026-08-28
+
+### Added
+- **Domain pack: `authorization-tenancy`** (`skills/test-iteration/references/domain-packs/authorization-tenancy.md`) —
+  the highest-value missing domain. `auth-sessions` covered login/session/token lifecycle but nothing on
+  **authorization**: horizontal privilege escalation / IDOR (object-level access), vertical privilege escalation
+  (function-level access, role tampering via mass assignment), **multi-tenant data isolation** (cross-account/tenant
+  read-write, aggregation leaks), indirect leaks & enumeration oracles, and token/scope enforcement. Grounded in
+  OWASP A01:2021 and the OWASP API Security Top 10 (BOLA/BFLA/mass assignment). The pack's method matches the
+  project's unbiased-verification rule — test with two freshly-created subjects (A, B, admin) and read out what each
+  actually sees, attacking across the boundary before confirming the deny. Registered in the pack table + step-5
+  domain detector.
+
 ## [2.26.0] - 2026-08-28
 
 ### Fixed (tool discovery — stop hard-coding tool names that don't exist on most installs)

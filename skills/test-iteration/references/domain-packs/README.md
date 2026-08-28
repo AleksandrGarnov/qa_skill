@@ -4,7 +4,7 @@ Reusable, sourced check sets for recurring problem domains. The generic negative
 
 ## How `test-iteration` uses them
 
-1. **Detect the domain(s) in triage (step 5)** — from the diff, decide which domains the change actually touches (a payment endpoint → `payments`; a login/session/token change → `auth-sessions`; a `<form>` / validation change → `forms`; an upload handler → `file-upload`; a search/query feature → `search`; a translated/localized surface → `i18n-l10n`).
+1. **Detect the domain(s) in triage (step 5)** — from the diff, decide which domains the change actually touches (a payment endpoint → `payments`; a login/session/token change → `auth-sessions`; a permission/role/ownership/tenant-scoped read or write → `authorization-tenancy`; a `<form>` / validation change → `forms`; an upload handler → `file-upload`; a search/query feature → `search`; a translated/localized surface → `i18n-l10n`).
 2. **Fold the matching pack into the tailored checklist (step 6)** — don't paste it whole and don't run it blindly: pick the items the change can actually break, drop the rest with the usual `N/A — <reason>`, and add feature-specifics on top.
 3. **Each pulled item still gets** Risk (H/M/L), Trace (→ AC / ticket), and an Evidence type when run (a `runtime`/security item needs `observed-data`/`api`/`log`, per the evidence-gate).
 
@@ -16,6 +16,7 @@ These packs supplement — they never replace — the AC-derived and code-derive
 |------|------------------------------|
 | [payments](payments.md) | charge/capture/refund/payout, payment state machine, gateway webhooks |
 | [auth-sessions](auth-sessions.md) | login, logout, session/cookie/token handling, password reset, MFA |
+| [authorization-tenancy](authorization-tenancy.md) | permission/role checks, object ownership (IDOR), admin actions, tenant/account data isolation, share/invite |
 | [forms](forms.md) | a `<form>`, field validation (client or server), submission flow |
 | [file-upload](file-upload.md) | any user file upload / import handler |
 | [search](search.md) | a search box, query endpoint, relevance/filter/pagination |
