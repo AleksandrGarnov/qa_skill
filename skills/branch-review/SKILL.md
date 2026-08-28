@@ -21,12 +21,12 @@ If `base` is omitted the script auto-detects it (origin/HEAD → develop → mai
 
 ## 2. Run two passes (in parallel) — tool-agnostic with fallbacks
 
-Pick the first available tool in each chain. The last option in each chain works on a bare Claude Code install, so this never silently no-ops.
+Pick the first available tool in each chain. **Discover by capability, don't assume a specific plugin is installed** — if the project ships a dedicated reviewer/security plugin, prefer it; otherwise fall through. The last option in each chain works on a bare Claude Code install, so this never silently no-ops.
 
-- **Code review:** `ruflo-core:reviewer` → built-in `/code-review` → **a `general-purpose` subagent** prompted to review the diff (always available).
-- **Security review:** `ruflo-security-audit` → built-in `/security-review` → **a `general-purpose` subagent** prompted to audit the diff for vulnerabilities (always available).
+- **Code review:** an installed specialized code-review skill/plugin, if any → built-in `/code-review` → **a `general-purpose` subagent** prompted to review the diff (always available).
+- **Security review:** an installed specialized security-audit skill/plugin, if any → built-in `/security-review` → **a `general-purpose` subagent** prompted to audit the diff for vulnerabilities (always available).
 
-Whatever tool runs, record which one you used.
+Whatever tool runs, **record which one you used and which tier it came from** (specialized / built-in / subagent) — so a report can't imply a specialized pass ran when only the bare-install fallback did.
 
 **Verification bar:** flag only what affects correctness / requirements / security, each tied to `file:line`. Style nitpicks are optional — don't bloat the output. No overengineering.
 

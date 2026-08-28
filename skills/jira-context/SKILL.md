@@ -21,7 +21,7 @@ It extracts a key in the official Jira format (`[A-Z][A-Z]+-[0-9]+`) from, in pr
 
 ## 2. Fetch the ticket — tool-agnostic with fallback
 
-- If a key was found **and** the Atlassian MCP is available, fetch it. The MCP tools may be deferred — first `ToolSearch query:"select:mcp__plugin_atlassian_atlassian__getJiraIssue"` to load the schema, then call `getJiraIssue` for the key. Request the fields QA needs: `summary, issuetype, description, priority, components, labels, status, issuelinks`, plus whether attachments exist. Skip worklog, watchers, sprint metadata, estimates — noise for test design.
+- If a key was found **and** a Jira MCP is available, fetch it. **Don't hard-code one server's tool name** — Jira MCPs vary by install (official Atlassian: `getJiraIssue`; community `mcp-atlassian`: `jira_get_issue` / `mcp__jira__jira_get_issue`). The tools may be deferred, so **discover by capability**: `ToolSearch query:"jira get issue"` (keyword search, not an exact `select:`), then call whichever get-issue tool it returns, regardless of namespace. Only fall to manual paste if that search yields nothing. Request the fields QA needs: `summary, issuetype, description, priority, components, labels, status, issuelinks`, plus whether attachments exist. Skip worklog, watchers, sprint metadata, estimates — noise for test design.
 - **Pull the signal comments** (not the whole noisy thread). The discussion carries what the description doesn't — and for a re-test it *is* the spec of what to verify. Extract: **QA findings / return-to-rework** comments, **developer "fixed / pushed" replies** (which finding, which commit), **reviewer blockers/decisions**, and any **status transition** notes. Filter out bot noise (CodeRabbit/Copilot summaries) to a skim. **A `status` like "Awaiting testing" / "Returned for rework" means this is a re-test — pulling the comments is then mandatory, not optional.**
 - If the key is `NONE` or the MCP is unavailable, **ask the user to paste the ticket text** (summary + description + acceptance criteria + the relevant comments). Never invent the ticket.
 
@@ -32,7 +32,7 @@ It extracts a key in the official Jira format (`[A-Z][A-Z]+-[0-9]+`) from, in pr
 Find acceptance criteria by walking an **ordered source chain** — stop at the first source that yields concrete, testable criteria, and **record which source they came from** (so a thin source is visible, not hidden):
 
 1. **`description` AC blocks** (primary for this project) — `Given/When/Then`, a checklist, or numbered "must/should" statements.
-2. **Dedicated AC custom field** — only if (1) is empty: `getJiraIssueTypeMetaWithFields` to find a field named like *Acceptance Criteria*; read it if present.
+2. **Dedicated AC custom field** — only if (1) is empty: via the available Jira MCP, read the issue's custom fields (an expanded get-issue with all fields, or the server's field/metadata tool — again discovered by capability, `ToolSearch query:"jira fields"`, not a hard-coded name) and look for a field named like *Acceptance Criteria*; read it if present.
 3. **Checklist-app field / panel** — only if (1)–(2) are empty and the project uses one (its items surface in a custom field).
 4. **Linked requirement / parent story** — only if (1)–(3) are empty and an `issuelink` points to a spec.
 
