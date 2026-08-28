@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.0] - 2026-08-28
+
+### Changed (close the gap: the oracle rule is now a mechanical gate, not just prose)
+- **`verify-coverage.sh` now enforces the independent oracle structurally.** v2.29.0 added the test-oracle
+  discipline as prose + an `Expected source` manifest column, but no gate checked it — so it rested entirely on
+  the LLM completeness review, the least reliable link. `verify-coverage.sh` now fails closed if the `## Items`
+  table has no `Expected source` column, if any item's expected source is empty/placeholder, or if it names the
+  implementation itself (`whatever the code returns`, `returned by the impl`, `same as the code`, …). A green
+  observation checked only against the code's own output can no longer reach a merge. Enforced at approval and
+  re-checked by the merge-gate hook. New tests pin each case (no column, empty source, impl-as-oracle, and a
+  valid metamorphic-rule source).
+
 ## [2.30.0] - 2026-08-28
 
 ### Added

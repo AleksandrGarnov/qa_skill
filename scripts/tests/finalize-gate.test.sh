@@ -40,10 +40,10 @@ Landed: double-spend via concurrent /charge -> item 1 (repro test attached). Not
 |---|-------|--------|---------|
 | J1 | customer | charge/refund | balance correct |
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl /charge` | balance-10 |
-| 2 | J1 | `curl /refund` | balance+refund |
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /charge` | balance-10 | hand calc: 100-10 |
+| 2 | J1 | `curl /refund` | balance+refund | invariant: refund credits back |
 MD
 
 cat > "$tmp/report_green.md" <<'MD'
