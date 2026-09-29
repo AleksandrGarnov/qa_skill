@@ -36,11 +36,11 @@ A metamorphic check is a real `pass`: it's an observation against an independent
 
 In the manifest / checklist, each item carries its **expected + source**:
 
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 3 | J1 | `POST /orders {items:[…], coupon:SAVE10}` → read `total` | `97.20` | hand calc: 100 − 10% + 8% tax (spec §4.2) |
-| 7 | J2 | reconcile ledger for account A after 3 postings | debits == credits | invariant (double-entry) |
-| 9 | J1 | search "red shoes", inspect ranking | exact-title match ranks above description-only match | metamorphic: relevance monotonicity |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 3 | J1 | boundary | `POST /orders {items:[…], coupon:SAVE10}` → read `total` | `97.20` | hand calc: 100 − 10% + 8% tax (spec §4.2) |
+| 7 | J2 | state-transition | reconcile ledger for account A after 3 postings | debits == credits | invariant (double-entry) |
+| 9 | J1 | use-case | search "red shoes", inspect ranking | exact-title match ranks above description-only match | metamorphic: relevance monotonicity |
 
 At execution (step 8) the bucket is `pass` only when the raw output **matches that expected / the invariant holds** — recorded in the report's Actual column against the Expected, not against plausibility. At step 9 the self-audit names, for each critical/AC pass, the independent expected it was checked against.
 

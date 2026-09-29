@@ -13,6 +13,12 @@
 #      done at the step-6.5 review, per this repo's rule: gates check field completeness, prose/review
 #      checks semantics. A green here means "an oracle is declared and isn't blatantly the code",
 #      not "the oracle is sound". See test-oracle.md.
+#   4. Test-design technique present (STRUCTURAL only) — the ## Items table carries a "Technique" column
+#      and every item names a technique from a CLOSED vocabulary (equivalence/boundary/decision-table/
+#      state-transition/use-case/pairwise/error-guessing/classification-tree/exploratory/n-a). A bare
+#      "manual"/"tested it"/"-" is rejected, so "I tested a few values/combos" can't pass for coverage.
+#      Whether the chosen technique is the RIGHT one for the feature is SEMANTIC (step-6.5 review), same
+#      split as the oracle check. See test-design-techniques.md.
 #
 # Usage: verify-coverage.sh <manifest.md> <report.md>
 # Output: COVERAGE-OK (exit 0) or a list of violations (exit 1).
@@ -64,7 +70,7 @@ awk '
     if (c1 ~ /^:?-+:?$/) next                       # separator row
     if (!seen) {                                    # header row -> locate columns
       seen=1
-      for (i=1;i<=n;i++){ h=tolower(f[i]); if(index(h,"journey"))jc=i; if(index(h,"id")&&!idc)idc=i; if(index(h,"source")&&!sc)sc=i }
+      for (i=1;i<=n;i++){ h=tolower(f[i]); if(index(h,"journey"))jc=i; if(index(h,"id")&&!idc)idc=i; if(index(h,"source")&&!sc)sc=i; if(index(h,"technique")&&!tc)tc=i }
       if (!idc) idc=1
       if (!jc)  jc=2
       next
@@ -72,7 +78,8 @@ awk '
     id=f[idc]; jr=f[jc]
     gsub(/[[:space:]]/,"",id); gsub(/[[:space:]]/,"",jr)
     src=(sc? f[sc] : ""); gsub(/^[[:space:]]+|[[:space:]]+$/,"",src); gsub(/\t/," ",src)
-    if (id != "") print id "\t" jr "\t" src
+    tech=(tc? f[tc] : ""); gsub(/^[[:space:]]+|[[:space:]]+$/,"",tech); gsub(/\t/," ",tech)
+    if (id != "") print id "\t" jr "\t" src "\t" tech
   }
 ' "$man" > "$tmp/items"
 
@@ -81,12 +88,22 @@ items_header="$(awk '/^## Items/{f=1;next} f&&/^\|/{print;exit}' "$man")"
 has_srccol=0
 printf '%s' "$items_header" | grep -qiE 'expected source|[^a-z]source[^a-z]|source *\|' && has_srccol=1
 
+# Does the ## Items table declare a "Technique" (test-design technique) column at all?
+has_techcol=0
+printf '%s' "$items_header" | grep -qiE 'technique' && has_techcol=1
+
 cut -f1 "$tmp/items" | sort -u > "$tmp/approved"
 napproved=$(grep -c . "$tmp/approved" 2>/dev/null || true)
 [ "${napproved:-0}" -gt 0 ] || fail "manifest has no checklist items (## Items empty)"
 
 # The oracle column must exist — every check needs an expected value sourced independently of the code.
 [ "$has_srccol" -eq 1 ] || fail "manifest ## Items has no 'Expected source' column — every check needs an oracle independent of the implementation (spec/hand-calc/invariant/reference/historical, or a metamorphic rule). See references/test-oracle.md"
+
+# The technique column must exist — every check must name the test-design technique that produced it,
+# so "tested a few values/combos" can't pass for coverage. This is STRUCTURAL (a recognized technique
+# is declared); whether it's the RIGHT technique for the feature is semantic (step-6.5 review), like the
+# oracle-independence check above. See references/test-design-techniques.md.
+[ "$has_techcol" -eq 1 ] || fail "manifest ## Items has no 'Technique' column — every check must name the test-design technique that chose its values/combinations/sequences (equivalence/boundary/decision-table/state-transition/use-case/pairwise/error-guessing/classification-tree/exploratory, or 'n/a — <reason>'). See references/test-design-techniques.md"
 
 # Best-effort TRIPWIRE for a source that is blatantly 'the code itself' — NOT a guarantee.
 # Independence is semantic (bash can't tell a real "hand calc: 100-10" from an invented "spec §4"),
@@ -95,8 +112,14 @@ napproved=$(grep -c . "$tmp/approved" 2>/dev/null || true)
 # blatantly the code". Byte-safe: no Cyrillic char classes/ranges (they break in C-locale grep).
 impl_oracle='whatever the code|the code returns?|code returns?|returned by (the )?(code|impl|implementation)|implementation under test|^impl(ementation)?$|same as (the )?(code|impl|current|existing|prod)|dev said|what the dev|because the code|current behaviou?r|existing behaviou?r|system output|running app|the app returns?|as returned|what it returns?|actual output|observed output|matches (the )?(current|existing|prod|app)|\(код\)|из кода|как в коде|что вернул код|что возвращает код|что отдаёт код|текущ[^|]*поведени|как сейчас|вывод системы|совпадает с (кодом|реализац)|как в проде|как в реализации'
 
-# every item must carry a journey ref that exists in ## Journeys, AND an independent oracle
-while IFS=$'\t' read -r id jr src; do
+# Recognized test-design technique vocabulary (CLOSED set — a value outside it, e.g. "manual" /
+# "tested it" / "-", is a disguised no-technique, mirroring the closed terminal-bucket whitelist for
+# results). Byte-safe: full words are unambiguous; abbreviations (ep/bva/dt/fsm/na/n/a) are boundary-
+# guarded with explicit [^a-zA-Z] so they don't match inside ordinary words (rename, keep, banana).
+tech_vocab='equivalence|partition|boundary|decision[ _-]?table|state[ _-]?transition|state[ _-]?machine|n-?switch|switch coverage|use[ _-]?case|scenario|pairwise|combinatorial|all-?pairs|t=[0-9]|error[ _-]?guess|classification[ _-]?tree|exploratory|not applicable|(^|[^a-zA-Z])(ep|bva|dt|fsm|na|n/a)([^a-zA-Z]|$)'
+
+# every item must carry a journey ref that exists in ## Journeys, an independent oracle, AND a technique
+while IFS=$'\t' read -r id jr src tech; do
   [ -n "$id" ] || continue
   if [ -z "$jr" ]; then
     fail "manifest item $id has no journey ref — every item must trace to a user journey (J#)"
@@ -107,6 +130,12 @@ while IFS=$'\t' read -r id jr src; do
     case "$src" in
       ""|"<"*">") fail "manifest item $id has no Expected source — derive the expected value independently of the implementation (spec/hand-calc/invariant/reference/historical), or state a metamorphic rule (references/test-oracle.md)";;
       *) printf '%s' "$src" | grep -qiE "$impl_oracle" && fail "manifest item $id names the implementation as its own oracle ('$src') — a green check would only prove the code agrees with itself; derive expected from an independent source. (This tripwire catches only blatant phrasings; the step-6.5 review checks true independence.)";;
+    esac
+  fi
+  if [ "$has_techcol" -eq 1 ]; then
+    case "$tech" in
+      ""|"<"*">") fail "manifest item $id has no Technique — name the test-design technique that produced its values/combinations/sequences (equivalence/boundary/decision-table/state-transition/use-case/pairwise/error-guessing/classification-tree/exploratory, or 'n/a — <reason>' for a trivial single-value check). See references/test-design-techniques.md";;
+      *) printf '%s' "$tech" | grep -qiE "$tech_vocab" || fail "manifest item $id names an unrecognized Technique ('$tech') — use one of equivalence/boundary/decision-table/state-transition/use-case/pairwise/error-guessing/classification-tree/exploratory, or 'n/a — <reason>' (a bare 'manual'/'tested it'/'-' is not a technique). See references/test-design-techniques.md";;
     esac
   fi
 done < "$tmp/items"
@@ -165,7 +194,7 @@ if [ -n "$drift" ]; then
 fi
 
 if [ "$viol" -eq 0 ]; then
-  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each declares an Expected source (independence verified semantically at step 6.5, not here)"
+  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each declares an Expected source and a test-design Technique (soundness of both verified semantically at step 6.5, not here)"
   exit 0
 fi
 echo "---"
