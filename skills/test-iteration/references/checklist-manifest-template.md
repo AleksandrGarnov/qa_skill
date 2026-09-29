@@ -2,7 +2,7 @@
 > The **frozen, approved contract** for this run (locked at step 7). The report (step 9) is cross-checked against it by `scripts/verify-coverage.sh`, which fails closed if **any item ID here has no result row** (a skipped item) or **any item doesn't trace to a journey** below. Built from **user journeys, not code concerns** — define the journeys first, then hang every item off one.
 
 **Branch:** <branch>   **Build / commit:** <commit>   **Approved:** <date>
-**Sidecars:** `manifest.json` mirrors this file for automation; keep the same journey IDs (`J#`) and item IDs here and there.
+**Sidecars:** `manifest.json` mirrors this file for automation; keep the same journey IDs (`J#`) and item IDs here and there, and mirror each item's `technique` field alongside its `acRefs`.
 
 ## Context (system guidelines — gathered BEFORE approval; gate: `verify-context.sh`)
 > Fill each block by running the **tool**, not from memory — the gate fails closed on an empty/placeholder block, and so does the merge-gate hook. This makes the front-loaded steps non-skippable.
@@ -28,12 +28,12 @@
 | J2 | <downstream consumer> | <reads / acts on the output> | <output is correct & trustworthy> |
 
 ## Items (every item traces to a J above)
-> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **AC refs** must point at the acceptance-criteria IDs carried from `jira-context`, and the same refs go into `manifest.json`. **Expected + Expected source**: the expected result and where it was derived — a source that is **not the implementation under test** (spec/formula, hand calc, invariant, reference impl, trusted historical), or a **metamorphic invariant** for an oracle-hard item ([test-oracle.md](test-oracle.md)); an expected of "whatever the code returns" is not a valid oracle. **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
+> One row per check. The **ID** is stable and is reused verbatim as the `#` in the report's Checklist results table — that's how coverage is matched. **Journey** must be one of the J ids above (an item with no journey is rejected). **AC refs** must point at the acceptance-criteria IDs carried from `jira-context`, and the same refs go into `manifest.json`. **Technique** names the test-design technique that produced the row's values/combination/sequence — one of `equivalence`, `boundary`, `decision-table`, `state-transition`, `use-case`, `pairwise`, `error-guessing`, `classification-tree`, `exploratory`, or `n/a — <reason>` for a trivial single-value smoke/regression check ([test-design-techniques.md](test-design-techniques.md)); `verify-coverage.sh` rejects a blank cell or a value outside this vocabulary (choosing the *right* technique is checked at the step-6.5 review, not by the gate). **Expected + Expected source**: the expected result and where it was derived — a source that is **not the implementation under test** (spec/formula, hand calc, invariant, reference impl, trusted historical), or a **metamorphic invariant** for an oracle-hard item ([test-oracle.md](test-oracle.md)); an expected of "whatever the code returns" is not a valid oracle. **Once approved, every item is non-skippable** — there is no "important vs optional" tier; if it's in the contract it must be executed. Smoke + Regression are never dropped; right-size the rest (`N/A — <reason>` at checklist time instead of adding it).
 
-| ID | Journey | AC refs | What to run (exact command / UI steps / API call) | Expected | Expected source (independent of the impl) |
-|----|---------|---------|----------------------------------------------------|----------|-------------------------------------------|
-| 1 | J1 | AC1 | <exact method> | <expected value> | <spec §/hand calc/invariant/reference — or metamorphic rule> |
-| 2 | J1 | AC2 | <exact method> | <expected value> | <…> |
-| 3 | J2 | AC3 | <exact method> | <expected value> | <…> |
+| ID | Journey | AC refs | Technique | What to run (exact command / UI steps / API call) | Expected | Expected source (independent of the impl) |
+|----|---------|---------|-----------|----------------------------------------------------|----------|-------------------------------------------|
+| 1 | J1 | AC1 | boundary | <exact method> | <expected value> | <spec §/hand calc/invariant/reference — or metamorphic rule> |
+| 2 | J1 | AC2 | decision-table | <exact method> | <expected value> | <…> |
+| 3 | J2 | AC3 | state-transition | <exact method> | <expected value> | <…> |
 
-> After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted.
+> After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted, each declaring a recognized `Technique` and an independent `Expected source`.

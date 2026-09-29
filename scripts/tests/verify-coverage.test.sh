@@ -15,7 +15,7 @@ rc() { "$VC" "$1" "$2" >/dev/null 2>&1; echo "$?"; }
 
 tmp="$(mktemp -d)"
 
-# A well-formed manifest: 3 items, all journey-rooted across 2 journeys.
+# A well-formed manifest: 3 items, all journey-rooted across 2 journeys, each with an oracle + technique.
 cat > "$tmp/manifest.md" <<'MD'
 # Checklist manifest
 ## Journeys
@@ -24,11 +24,11 @@ cat > "$tmp/manifest.md" <<'MD'
 | J1 | customer | places a charge | balance debited |
 | J2 | admin | processes a payout | funds released |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl -XPOST /api/charge` | balance-10 | hand calc: 100-10 (spec §4) |
-| 2 | J1 | `curl -XPOST /api/refund` | balance+refund | invariant: refund credits back |
-| 3 | J2 | admin UI: approve payout #5515 | paid | spec: payout state=paid |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl -XPOST /api/charge` | balance-10 | hand calc: 100-10 (spec §4) |
+| 2 | J1 | equivalence | `curl -XPOST /api/refund` | balance+refund | invariant: refund credits back |
+| 3 | J2 | state-transition | admin UI: approve payout #5515 | paid | spec: payout state=paid |
 MD
 
 # Report that accounts for all 3 ids -> COVERAGE-OK (0)
@@ -113,10 +113,10 @@ cat > "$tmp/man_nojourney.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | ok | spec |
-| 2 |  | `psql -c 'select ...'` | ok | spec |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | ok | spec |
+| 2 |  | boundary | `psql -c 'select ...'` | ok | spec |
 MD
 cat > "$tmp/rep_two.md" <<'MD'
 # Test Report
@@ -136,10 +136,10 @@ cat > "$tmp/man_badjourney.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | ok | spec |
-| 2 | J9 | `curl /api/refund` | ok | spec |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | ok | spec |
+| 2 | J9 | boundary | `curl /api/refund` | ok | spec |
 MD
 assert_eq "item refs undefined journey -> exit 1" "1" "$(rc "$tmp/man_badjourney.md" "$tmp/rep_two.md")"
 
@@ -150,9 +150,9 @@ cat > "$tmp/man_nojourneys.md" <<'MD'
 | J | Actor | Action | Outcome |
 |---|-------|--------|---------|
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | ok | spec |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | ok | spec |
 MD
 assert_eq "zero journeys (code-rooted) -> exit 1" "1" "$(rc "$tmp/man_nojourneys.md" "$tmp/rep_two.md")"
 
@@ -165,9 +165,9 @@ cat > "$tmp/man_nosrccol.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected |
-|----|---------|-------------|----------|
-| 1 | J1 | `curl /api/charge` | balance-10 |
+| ID | Journey | Technique | What to run | Expected |
+|----|---------|-----------|-------------|----------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 |
 MD
 cat > "$tmp/rep_one.md" <<'MD'
 # Test Report
@@ -186,9 +186,9 @@ cat > "$tmp/man_emptysrc.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | balance-10 |  |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 |  |
 MD
 assert_eq "empty expected source -> exit 1" "1" "$(rc "$tmp/man_emptysrc.md" "$tmp/rep_one.md")"
 
@@ -200,9 +200,9 @@ cat > "$tmp/man_implsrc.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | balance-10 | whatever the code returns |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | whatever the code returns |
 MD
 assert_eq "impl-as-oracle -> exit 1" "1" "$(rc "$tmp/man_implsrc.md" "$tmp/rep_one.md")"
 
@@ -216,9 +216,9 @@ for phrase in "matches current behavior" "= system output" "per the running app"
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | \`curl /api/charge\` | balance-10 | $phrase |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | \`curl /api/charge\` | balance-10 | $phrase |
 MD
   assert_eq "code-as-oracle paraphrase '$phrase' -> exit 1" "1" "$(rc "$tmp/man_impl_para.md" "$tmp/rep_one.md")"
 done
@@ -231,9 +231,9 @@ cat > "$tmp/man_metamorphic.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | debit == credit | metamorphic: double-entry invariant |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | debit == credit | metamorphic: double-entry invariant |
 MD
 assert_eq "metamorphic oracle -> exit 0" "0" "$(rc "$tmp/man_metamorphic.md" "$tmp/rep_one.md")"
 
@@ -245,9 +245,9 @@ cat > "$tmp/man_ru_code.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | balance-10 | hotCutoff() не вычитает (код) |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hotCutoff() не вычитает (код) |
 MD
 assert_eq "RU code-as-oracle '(код)' -> exit 1" "1" "$(rc "$tmp/man_ru_code.md" "$tmp/rep_one.md")"
 
@@ -259,9 +259,9 @@ cat > "$tmp/man_ru_ok.md" <<'MD'
 |---|-------|--------|---------|
 | J1 | customer | places a charge | balance debited |
 ## Items
-| ID | Journey | What to run | Expected | Expected source |
-|----|---------|-------------|----------|-----------------|
-| 1 | J1 | `curl /api/charge` | balance-10 | ручной расчёт |
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | ручной расчёт |
 MD
 cat > "$tmp/rep_ru.md" <<'MD'
 # Отчёт
@@ -271,6 +271,94 @@ cat > "$tmp/rep_ru.md" <<'MD'
 | 1 | charge | run | pass | api-response | R1 | 90 |
 MD
 assert_eq "RU results heading matched for coverage -> exit 0" "0" "$(rc "$tmp/man_ru_ok.md" "$tmp/rep_ru.md")"
+
+# --- Technique gate (test-design technique declared) ---
+# Manifest with an oracle column but NO Technique column -> FAIL (1)
+cat > "$tmp/man_notechcol.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | What to run | Expected | Expected source |
+|----|---------|-------------|----------|-----------------|
+| 1 | J1 | `curl /api/charge` | balance-10 | hand calc: 100-10 |
+MD
+assert_eq "no Technique column -> exit 1" "1" "$(rc "$tmp/man_notechcol.md" "$tmp/rep_one.md")"
+
+# Item with an EMPTY technique cell -> FAIL (1)
+cat > "$tmp/man_emptytech.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 |  | `curl /api/charge` | balance-10 | hand calc: 100-10 |
+MD
+assert_eq "empty technique -> exit 1" "1" "$(rc "$tmp/man_emptytech.md" "$tmp/rep_one.md")"
+
+# Item with an unfilled <placeholder> technique -> FAIL (1)
+cat > "$tmp/man_phtech.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | <technique> | `curl /api/charge` | balance-10 | hand calc: 100-10 |
+MD
+assert_eq "placeholder technique -> exit 1" "1" "$(rc "$tmp/man_phtech.md" "$tmp/rep_one.md")"
+
+# Item with a bare non-technique value ('manual' / 'tested it' / '-') -> FAIL (1)
+for junk in "manual" "tested it" "-" "smoke"; do
+  cat > "$tmp/man_badtech.md" <<MD
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | $junk | \`curl /api/charge\` | balance-10 | hand calc: 100-10 |
+MD
+  assert_eq "non-technique value '$junk' -> exit 1" "1" "$(rc "$tmp/man_badtech.md" "$tmp/rep_one.md")"
+done
+
+# Recognized techniques (full names, abbreviations, and 'n/a — reason') all satisfy the gate -> exit 0
+cat > "$tmp/man_goodtech.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | decision-table | rule R3 | 10% off | spec: pricing rules |
+| 2 | J1 | state-transition (all-transitions) | refund a captured charge | refunded | spec: payment FSM |
+| 3 | J1 | pairwise t=2 | Card x US x Mobile | accepted | spec: checkout matrix |
+| 4 | J1 | BVA | qty=100 (max+1) | rejected | spec: qty range 1-99 |
+| 5 | J1 | n/a — trivial copy rename | open settings page | title reads "Settings" | design mock |
+MD
+cat > "$tmp/rep_goodtech.md" <<'MD'
+# Test Report
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | discount | rule R3 | pass | observed-data | R1 | 10% off |
+| 2 | refund | refund captured | pass | api-response | R1 | refunded |
+| 3 | checkout | Card US Mobile | pass | api-response | R1 | accepted |
+| 4 | qty | qty=100 | pass | api-response | R1 | rejected |
+| 5 | settings | open page | pass | observed-data | R1 | Settings |
+MD
+assert_eq "recognized techniques (names/abbrev/n-a) -> exit 0" "0" "$(rc "$tmp/man_goodtech.md" "$tmp/rep_goodtech.md")"
 
 # Missing manifest / report files -> exit 1
 assert_eq "missing manifest -> exit 1" "1" "$(rc "$tmp/nope.md" "$tmp/rep_full.md")"

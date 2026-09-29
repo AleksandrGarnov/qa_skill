@@ -31,18 +31,21 @@ FRESH — no earlier QA run for this branch.
 ### Research (Exa)
 - Auth-flow edge cases and rate-limit guidance folded into the items below.
 
+### Adversarial (break-it pass — step 4.5)
+- Brute-force + session-fixation attempted; no attacks landed (rate-limit + cookie rotation hold).
+
 ## Journeys
 
-| J  | Journey                                  |
-|----|------------------------------------------|
-| J1 | User logs in                             |
+| J  | Journey        |
+|----|----------------|
+| J1 | User logs in   |
 
 ## Items
 
-| ID | Journey | Check                                       |
-|----|---------|---------------------------------------------|
-| 1  | J1      | Valid login returns 200 + session cookie    |
-| 2  | J1      | Wrong password returns 401, no session      |
+| ID | Journey | Technique   | Check                                    | Expected source     |
+|----|---------|-------------|------------------------------------------|---------------------|
+| 1  | J1      | use-case    | Valid login returns 200 + session cookie | spec: PROJ-123 AC1  |
+| 2  | J1      | equivalence | Wrong password returns 401, no session   | spec: PROJ-123 AC2  |
 EOF
 
 # --- report v1: item 2 left 'not executed' under a clean GO -> gates go red ---

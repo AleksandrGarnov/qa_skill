@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.38.0] - 2026-09-29
+
+### Added (test-design techniques — declared per item and gate-enforced)
+- **Broadened `references/test-design-techniques.md` beyond EP/BVA/pairwise** to the full ISTQB black-box +
+  experience-based set: **decision tables** (condition/business-rule combinations — ≥1 test per feasible rule,
+  drop infeasible, merge don't-cares), **state-transition testing** (statuses/lifecycles/state machines — with
+  the all-states / valid-transitions (0-switch) / all-transitions / N-switch coverage criteria, incl. attempting
+  invalid transitions one-per-test for money/state changes), **use-case/scenario testing** (basic + alternative +
+  exception flows), and **error guessing / classification tree**. Each technique carries a per-technique coverage
+  claim and a selection guide keyed to the shape of the change. Grounded in ISTQB CTFL §4.2/§4.4, the ISTQB
+  Glossary, and ISO/IEC/IEEE 29119-4.
+- **New `Technique` column in the frozen checklist manifest** (`## Items`) — every check names the test-design
+  technique that produced its values/combinations/sequences. Mirrored as a `technique` field in `manifest.json`.
+
+### Changed (a declared technique is now a coverage gate)
+- **`verify-coverage.sh` fails closed** if the `## Items` table has no `Technique` column, or any item leaves it
+  blank/placeholder, or names a value outside the recognized vocabulary (`equivalence`, `boundary`,
+  `decision-table`, `state-transition`, `use-case`, `pairwise`, `error-guessing`, `classification-tree`,
+  `exploratory`, or `n/a — <reason>`). A bare `manual`/`tested it`/`-` is rejected, so "I tested a few
+  values/combos" can no longer pass for coverage. This is **structural only** (a recognized technique is
+  declared); whether it's the *right* technique for the feature stays a semantic judgement at the step-6.5
+  independent review — the same gate/prose split as the oracle-independence check.
+- **`test-iteration` step 5** now picks the technique from the shape of the change and tags each manifest item;
+  the manual-checklist and manifest templates, `test-oracle.md`, and `README.md` reflect the new column and gate.
+
+### Notes
+- **Breaking for in-flight manifests:** a manifest frozen before this release has no `Technique` column and will
+  now fail `verify-coverage.sh` — add the column (one recognized value per item) to re-green the gate.
+
 ## [2.37.0] - 2026-08-28
 
 ### Fixed (gate localization — English-heading coupling false-blocked real non-English reports)
