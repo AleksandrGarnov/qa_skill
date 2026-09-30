@@ -12,6 +12,9 @@ Thumbs.db
 *.local
 secrets/
 
+# Local QA run-state written by the plugin at runtime (qa-run.json etc.)
+.claude/
+
 # Caches / build
 node_modules/
 __pycache__/

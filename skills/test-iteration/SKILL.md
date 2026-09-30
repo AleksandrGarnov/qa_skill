@@ -79,8 +79,12 @@ Build the candidate checks in this order, then consolidate:
 ```
 A matching learned check that you *don't* fold in is a coverage gap the step-6.5 review flags.
 7. **Define the oracle per check — expected result, sourced independently.** For every item — above all a **computed / money / aggregated / state-transition** one — write down the *expected* value **and where it came from**, and make that source **anything but the implementation under test**: a hand calc, the spec's formula, a known invariant, a reference implementation, a trusted historical figure. An item whose only "expected" is "whatever the code returns" tests nothing — it's a mock one level up. When the right answer genuinely can't be pre-computed (search relevance, ML output, a complex transform, non-deterministic order), attach a **metamorphic / property invariant** instead of an exact value (sum-of-parts == whole, idempotent replay, reverse-restores-input, reorder-changes-output-predictably). See [test-oracle.md](references/test-oracle.md). Carry the expected + its source into the manifest so approval and step-9 can check the observation *against it*, not against plausibility.
-8. **Reconcile + map.** Anchor each AC to ≥1 check (an AC with none is a gap); log Jira↔code discrepancies as PO questions; keep a `changed-code → item` map for step 9's code-orphan check.
-**Done when:** one risk-ranked list — AC-anchored, journey-organized, with failure-modes/flows/code/packs folded in, each check carrying an **independently-sourced expected (or a metamorphic invariant)**, blast-radius callers as regression items, and the `changed-code → item` map built.
+8. **Reconcile + map — every changed surface gets a check (Test-Gap).** Anchor each AC to ≥1 check (an AC with none is a gap); log Jira↔code discrepancies as PO questions. Then enumerate the **changed behaviour-surfaces** deterministically and map each to ≥1 item — this is what stops a large diff from collapsing into a handful of checks:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/changed-surfaces.sh" <branch> [base]   # -> file / file::function per changed non-noise hunk
+```
+Every surface it prints must map to **≥1 item ID**, or an explicit **`N/A — <reason>`** (pure refactor/rename, config-only, dead code, generated). A surface with no covering item is a Test-Gap — add a check (don't trim the list). This is the same `changed-code → item` map step 9's code-orphan check uses.
+**Done when:** one risk-ranked list — AC-anchored, journey-organized, with failure-modes/flows/code/packs folded in, each check carrying an **independently-sourced expected (or a metamorphic invariant)**, blast-radius callers as regression items, and **every changed surface from `changed-surfaces.sh` mapped to ≥1 item or a reasoned N/A**.
 
 ### 6. Checklist + exit criteria
 Build it as **tables** ([manual-checklist-template.md](references/manual-checklist-template.md)) — one row per check, columns **# · what to check · how to run (exact command/UI steps/API call) · expected · risk · trace (AC)**. A vague item ("check it reconciles") is skippable/proxyable; a prescribed one ("run `<cmd>`, expect `<X>`, read `<field>` == `<Y>`") can only be done or `blocked`. **Right-size** (template's Scope & tailoring): skip a section only as a recorded `N/A — <reason>`; Smoke + Regression are never skipped. Derive **per-item test-data preconditions *and teardown*** up front ([test-data-management.md](references/test-data-management.md)) — most `blocked` results are unready data; provision a **fresh, isolated subject per scenario** (synthetic/newly-created, never a raw production copy — masked non-prod subset only if production-shape is needed), and plan cleanup in the same row so created data doesn't rot staging into false positives for the next run.
@@ -92,13 +96,17 @@ Also emit the checklist as a **frozen manifest** ([checklist-manifest-template.m
 - **`### Research (Exa)`** — the Exa findings turned into checks (guideline 2: always research; the journey-rooting enforces "user-flow first, code-branches under it").
 - **`### Adversarial`** — the step-4.5 break-it pass: each attack scenario dispositioned into an item (landed → FAIL-candidate item + reproducing test; not-landed → hardening/regression check), so "prove-it-breaks" is a non-skippable input, not an optional afterthought.
 
-Then gate the manifest **before showing it for approval**:
+It also carries a **`## Changed-surface coverage`** table — freeze the `changed-surfaces.sh` output (step 6.8) as its rows and map each surface to its covering item ID(s) or a reasoned `N/A`. This is the Test-Gap contract: a big change cannot be "covered" by a handful of items.
+
+Then gate the manifest **before showing it for approval** (freeze the surfaces list to a file first, so the gate and the merge-hook re-check against it):
 ```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/changed-surfaces.sh" <branch> [base] > <bundle>/surfaces.txt   # freeze the surface set
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-context.sh"  <manifest.md>                # must print CONTEXT-OK
-"${CLAUDE_PLUGIN_ROOT}/scripts/verify-coverage.sh" <manifest.md> <report.md>    # journey-rooting (report may be a stub here)
+"${CLAUDE_PLUGIN_ROOT}/scripts/verify-coverage.sh" <manifest.md> <report.md>    # journey-rooting + technique + oracle (report may be a stub here)
+"${CLAUDE_PLUGIN_ROOT}/scripts/verify-gap.sh"      <manifest.md> <bundle>/surfaces.txt   # must print GAP-OK — every changed surface mapped
 ```
-`verify-context.sh` fails closed if the Discussion / Prior-tests / Research / Adversarial blocks are empty — so the front-loaded steps (read comments, prior runs, Exa, the break-it pass) **cannot be skipped**; the merge-gate hook re-checks it at merge.
-**Done when:** a journey-rooted manifest with a filled `## Context` (CONTEXT-OK) + items (ID + journey ref) + exit criteria including the mandatory core.
+`verify-context.sh` fails closed if the Discussion / Prior-tests / Research / Adversarial blocks are empty; `verify-gap.sh` fails closed if any changed surface has no covering item or reasoned N/A — so the front-loaded steps **and** proportional coverage **cannot be skipped**. Record the frozen `surfaces.txt` path as `surfaces` in the run-state (`.claude/qa-run.json`) so the **merge-gate hook re-checks the Test-Gap gate (`GAP-OK`) at merge**, not just at approval.
+**Done when:** a journey-rooted manifest with a filled `## Context` (CONTEXT-OK) + items (ID + journey ref) + a `## Changed-surface coverage` map (GAP-OK) + exit criteria including the mandatory core.
 
 ### 6.5. Independent completeness review
 Have a **fresh `general-purpose` subagent** — given only the inputs (diff, AC, the `changed-code → item` map, the matching **learned checks** (step 5), the checklist, the exit criteria), **not** your reasoning — report **what's missing or unfounded**: an uncovered AC, an uncovered changed symbol, an item with no AC/code basis, **a `qa-research` finding that became neither a checklist item nor a recorded reject**, **a matching learned check that wasn't folded into the checklist**, an `N/A` whose reason doesn't hold, **a computed/money/state item whose `Expected source` is not *genuinely* independent of the implementation** — this is the review's job, not the gate's: `verify-coverage` only trips blatant phrasings (`= system output`), so the reviewer must judge whether each source is *real and independent* (a `spec §4` that cites no actual spec, a "hand calc" with no arithmetic shown, or an "invariant" that just restates the code are all failures) — **and has no metamorphic invariant standing in for it**, an exit criterion weaker than the core. Fold the real findings back; re-run once if material; cap at 2 rounds. No subagent → do a cold self-review in a separate, explicit pass and say so.
@@ -116,16 +124,19 @@ manifest_json="$(printf '%s\n' "$bundle" | sed -n 's/^MANIFEST-JSON: //p')"
 report_md="$(printf '%s\n' "$bundle" | sed -n 's/^REPORT-MD: //p')"
 report_json="$(printf '%s\n' "$bundle" | sed -n 's/^REPORT-JSON: //p')"
 artifacts_json="$(printf '%s\n' "$bundle" | sed -n 's/^ARTIFACTS-JSON: //p')"
+surfaces_txt="$(printf '%s\n' "$bundle" | sed -n 's/^SURFACES: //p')"
 bundle_dir="$(printf '%s\n' "$bundle" | sed -n 's/^BUNDLE-DIR: //p')"
+# freeze the changed-surface set into the bundle so the Test-Gap gate re-checks it at merge
+"${CLAUDE_PLUGIN_ROOT}/scripts/changed-surfaces.sh" "$ARGUMENTS" > "$surfaces_txt"
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-.}/.claude"
-printf '{"schemaVersion":1,"runId":"%s","status":"approved","branch":"%s","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"%s","artifactsIndexJson":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending"}}\n' \
-  "<run-id>" "$ARGUMENTS" "$bundle_dir" "$manifest_md" "$manifest_md" "$manifest_json" "$report_md" "$report_md" "$report_json" "$artifacts_json" \
+printf '{"schemaVersion":1,"runId":"%s","status":"approved","branch":"%s","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"%s","artifactsIndexJson":"%s","surfaces":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending","gap":"pending"}}\n' \
+  "<run-id>" "$ARGUMENTS" "$bundle_dir" "$manifest_md" "$manifest_md" "$manifest_json" "$report_md" "$report_md" "$report_json" "$artifacts_json" "$surfaces_txt" \
   > "${CLAUDE_PROJECT_DIR:-.}/.claude/qa-run.json"
 ```
 Write the frozen manifest to **both** `manifest.md` and the adjacent `manifest.json` sidecar. The markdown stays the approval/report surface for humans; the JSON sidecar is the canonical machine-readable contract for automation. Keep the item IDs and journey refs identical across both.
 
-The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass — so a skipped checklist item or ungathered context physically cannot reach a merge, regardless of what the agent does. If `manifestJson` / `reportJson` are declared in the run-state, they must exist on disk too. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
+The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass (plus `GAP-OK` when `surfaces` is set) — so a skipped checklist item, ungathered context, or an **untested changed surface** physically cannot reach a merge, regardless of what the agent does. If `manifestJson` / `reportJson` / `surfaces` are declared in the run-state, they must exist on disk too. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
 
 ### 8. Run on staging — a full execution record per item
 **Entry criteria (don't start until they hold):** the target is non-prod; staging is reachable; **THIS branch's commit is deployed** —
@@ -168,8 +179,9 @@ Run **two-axis orphan detection**: **AC ↔ tests** and **changed-code ↔ tests
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-context.sh"  <manifest.md>               # must print CONTEXT-OK
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-report.sh"   <report.md>                 # must print REPORT-OK
 "${CLAUDE_PLUGIN_ROOT}/scripts/verify-coverage.sh" <manifest.md> <report.md>   # must print COVERAGE-OK
+"${CLAUDE_PLUGIN_ROOT}/scripts/verify-gap.sh"      <manifest.md> <bundle>/surfaces.txt   # must print GAP-OK
 ```
-`verify-report.sh` fails on: an incomplete execution record, an unfilled `Prior-test basis` line, a bug with no exact repro, or a **clean ✅ GO that still has a `not executed` row**. `verify-coverage.sh` fails (set-diff against the frozen manifest) on: **any approved item with no result row OR marked `not executed`** (a skip — every approved item is non-skippable, guideline 3), **any item not rooted in a defined journey** (guideline 2), or **any item whose `Expected source` is empty or names the implementation itself** (the oracle rule — the code can't be its own oracle) — making "the report quietly dropped/skipped checks" and "the checklist was built from code, not journeys" mechanically impossible. When `manifest.json` + `report.json` + `artifacts.json` exist, also run `verify-sidecars.sh` (md↔json item IDs agree — the markdown gates and the JSON evidence gate can't pass on different pictures) then `verify-evidence.sh` so runtime AC, raw quotes, corroboration, and artifact refs are enforced structurally rather than only by prose.
+`verify-report.sh` fails on: an incomplete execution record, an unfilled `Prior-test basis` line, a bug with no exact repro, or a **clean ✅ GO that still has a `not executed` row**. `verify-coverage.sh` fails (set-diff against the frozen manifest) on: **any approved item with no result row OR marked `not executed`** (a skip — every approved item is non-skippable, guideline 3), **any item not rooted in a defined journey** (guideline 2), or **any item whose `Expected source` is empty or names the implementation itself** (the oracle rule — the code can't be its own oracle) — making "the report quietly dropped/skipped checks" and "the checklist was built from code, not journeys" mechanically impossible. `verify-gap.sh` fails (Test-Gap) on **any changed behaviour-surface from `changed-surfaces.sh` with no covering item or reasoned N/A** — so a large diff can't be "covered" by a handful of items. When `manifest.json` + `report.json` + `artifacts.json` exist, also run `verify-sidecars.sh` (md↔json item IDs agree — the markdown gates and the JSON evidence gate can't pass on different pictures) then `verify-evidence.sh` so runtime AC, raw quotes, corroboration, and artifact refs are enforced structurally rather than only by prose.
 
 Write the report into **both** `report.md` and the adjacent `report.json` sidecar, then update the active run-state (`.claude/qa-run.json`, step 7) so the **merge-gate hook** enforces these three gates at the irreversible action. The markdown is the human-readable audit artifact; the JSON sidecar carries the same item IDs / AC matrix / verdict data in machine-readable form for later gates. You run the shell gates here for early feedback, **but the binding enforcement is the hook, not this step** — even if this step were skipped, the hook blocks the merge until all three are green.
 
@@ -180,7 +192,7 @@ Write the report into **both** `report.md` and the adjacent `report.json` sideca
 "${CLAUDE_PLUGIN_ROOT}/scripts/confidence.sh" record <test-docs-path>/qa-confidence.md "<component>" go "<adw/run id>"
 ```
 Record GO **only** for a clean GO — never for `GO with deferrals`, `exploratory`, or NO-GO (those aren't the reliability signal).
-**Done when:** ledger + both orphan axes + Evidence column + self-audit + `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK`; verdict justified against the fixed criteria; a clean GO recorded to the confidence ledger.
+**Done when:** ledger + both orphan axes + Evidence column + self-audit + `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` + `GAP-OK`; verdict justified against the fixed criteria; a clean GO recorded to the confidence ledger.
 
 ### 10. Re-test loop (if not GO)
 On new fixes, don't restart — re-run only the failed/blocked items + a regression pass on what they could touch, against the **bumped build** (re-testing the failed build proves nothing). Record each defect's `found in round` / `fix verified in round`; the AC matrix is the source of truth across rounds. Repeat until GO (or the user calls it).

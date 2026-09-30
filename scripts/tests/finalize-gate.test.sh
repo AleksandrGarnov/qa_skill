@@ -195,6 +195,47 @@ printf '{"schemaVersion":1,"runId":"run-01","status":"approved","branch":"featur
   "$tmp/runs/feature-x/run-01" "$tmp/manifest.md" "$tmp/manifest.md" "$tmp/manifest.json" "$tmp/report_green.md" "$tmp/report_green.md" "$tmp/runs/feature-x/run-01/artifacts.json" > "$tmp/state_empty_reportjson.json"
 assert_eq "sidecar-aware but empty reportJson -> BLOCK (2)" "2" "$(rc "git merge feature/x" "$tmp/state_empty_reportjson.json")"
 
+# --- Test-Gap (GAP) gate: engages only when the run-state freezes a surfaces list ---
+cat > "$tmp/surfaces.txt" <<'TXT'
+app/Wallet.php::charge
+app/Wallet.php::refund
+TXT
+# manifest WITH a coverage section mapping every surface -> GAP passes
+cat > "$tmp/manifest_gap.md" <<'MD'
+# Checklist manifest
+## Context
+### Discussion — GitHub PR + Jira
+PR #3146: reviewer flagged Redis desync. Jira: dev says repair runs on worker.
+### Prior tests
+FRESH — first test (prior-tests.sh = NONE)
+### Research (Exa)
+Octane leaks tx across requests -> item 1.
+### Adversarial
+Landed: double-spend via concurrent /charge -> item 1. Not landed: negative amount rejected.
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | charge/refund | balance correct |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /charge` | balance-10 | hand calc: 100-10 |
+| 2 | J1 | equivalence | `curl /refund` | balance+refund | invariant: refund credits back |
+## Changed-surface coverage
+| Changed surface | Covered by items | Notes |
+|-----------------|------------------|-------|
+| app/Wallet.php::charge | 1 | |
+| app/Wallet.php::refund | 2 | |
+MD
+state_surf() { printf '{"manifest":"%s","report":"%s","surfaces":"%s","branch":"feature/x"}' "$1" "$tmp/report_green.md" "$2" > "$tmp/state_surf.json"; echo "$tmp/state_surf.json"; }
+
+# green manifest + coverage section covering all surfaces -> allow (0)
+assert_eq "git merge, GAP mapped -> allow (0)" "0" "$(rc "git merge feature/x" "$(state_surf "$tmp/manifest_gap.md" "$tmp/surfaces.txt")")"
+# manifest WITHOUT a coverage section but surfaces frozen -> GAP red -> BLOCK (2)
+assert_eq "git merge, surfaces frozen but no coverage section -> BLOCK (2)" "2" "$(rc "git merge feature/x" "$(state_surf "$tmp/manifest.md" "$tmp/surfaces.txt")")"
+# a run-state with a surfaces path that doesn't exist on disk -> GAP skipped (backward-compatible) -> allow (0)
+assert_eq "git merge, surfaces path missing -> GAP skipped, allow (0)" "0" "$(rc "git merge feature/x" "$(printf '{"manifest":"%s","report":"%s","surfaces":"%s","branch":"feature/x"}' "$tmp/manifest_gap.md" "$tmp/report_green.md" "$tmp/nope_surfaces.txt" > "$tmp/state_nosurf.json"; echo "$tmp/state_nosurf.json")")"
+
 rm -rf "$tmp"
 echo "---"; echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

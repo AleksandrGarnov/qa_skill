@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.39.0] - 2026-09-30
+
+### Added (M1 — Test-Gap gate: coverage now scales to the diff)
+- **`scripts/changed-surfaces.sh <branch> [base]`** — enumerates the **changed behaviour-surfaces** of a
+  diff (a changed non-noise file, or `file::function` where git names the hunk), filtering
+  docs/tests/generated/lockfiles/migrations. Deterministic (git's own diff + hunk-context output, no
+  bespoke language parser), so the surface list is stable run-over-run. A `--diff <file>` mode parses a
+  saved unified diff (used by the self-tests).
+- **`scripts/verify-gap.sh <manifest> <surfaces-file>`** — the **Test-Gap coverage gate**. Fails closed if
+  the manifest's new **`## Changed-surface coverage`** table lacks a row for any changed surface (unmapped),
+  or a row has no covering item ID and no reasoned `N/A`, or names an item absent from `## Items` (dangling).
+  This directly closes the "2000 lines of change → 5 checks" hole: coverage scales with the diff. Structural
+  only — whether the mapped items *truly exercise* the surface is the step-6.5 review's call. Grounded in
+  Test-Gap Analysis (Amann/Jürgens: >55% of changes ship untested, 70% of field bugs trace to those gaps)
+  and patch/diff coverage (diff-cover, Codecov patch).
+
+### Changed
+- **`finalize-gate.sh` runs the GAP gate at merge** when the run-state declares a frozen `surfaces` path —
+  a `git merge`/`push`/`gh pr merge` is blocked (exit 2) if any changed surface is untested. Backward-
+  compatible: a legacy run-state without `surfaces` skips GAP, exactly like the sidecar gates.
+- **`qa-bundle.sh`** now emits a canonical `SURFACES:` path (`<bundle>/surfaces.txt`) for the frozen list;
+  `surfaces` stays optional in `state validate` so existing run-states keep validating.
+- **`test-iteration`** step 6 freezes `changed-surfaces.sh` output and maps every surface to ≥1 item; step 7
+  records the `surfaces` path in `.claude/qa-run.json`; the manifest template gains the
+  `## Changed-surface coverage` section; step 9 and the merge-gate re-check `GAP-OK`. README updated.
+
+### Notes
+- **Backward-compatible:** the GAP gate only engages once a run freezes a `surfaces` list — no existing run,
+  manifest, or run-state is invalidated by upgrading.
+- Follow-ups tracked for this series: M2 (technique-as-quota), M3 (blast-radius→regression enumeration),
+  M4 (diff-scale signal at triage), M5 (Test-Gap completeness critic).
+
 ## [2.38.0] - 2026-09-29
 
 ### Added (test-design techniques — declared per item and gate-enforced)
