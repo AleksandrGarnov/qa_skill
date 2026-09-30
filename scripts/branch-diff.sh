@@ -62,3 +62,17 @@ echo "--- diff stat vs origin/$base ---"
 git diff --stat "origin/$base...HEAD"
 echo "--- changed files ---"
 git diff --name-only "origin/$base...HEAD"
+
+# --- scale (M4): right-size the checklist to the magnitude of the change, not to habit ---
+# behaviour-surfaces is the count from changed-surfaces.sh — each needs >=1 covering item (verify-gap),
+# so this is the floor the checklist must clear. A big number here + a tiny checklist = a Test-Gap.
+here="$(cd "$(dirname "$0")" && pwd)"
+diff_tmp="$(mktemp)"
+git diff "origin/$base...HEAD" > "$diff_tmp" 2>/dev/null || true
+nfiles="$(git diff --name-only "origin/$base...HEAD" | grep -c . || true)"
+scale_ad="$(git diff --numstat "origin/$base...HEAD" | awk '{a+=$1; d+=$2} END{printf "%d %d", a+0, d+0}')"
+nsurf="$("$here/changed-surfaces.sh" --diff "$diff_tmp" 2>/dev/null | grep -c . || true)"
+rm -f "$diff_tmp"
+echo "--- scale ---"
+echo "scale: files=${nfiles:-0} lines=+${scale_ad% *}/-${scale_ad#* } behaviour-surfaces=${nsurf:-0}"
+echo "right-size to this: ~${nsurf:-0} surface(s) each need >=1 covering item (verify-gap enforces it); run blast-radius.sh for their callers"

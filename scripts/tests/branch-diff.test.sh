@@ -42,6 +42,7 @@ out="$(cd "$w" && "$BD" feature 2>/dev/null)"
 assert_eq "auto-detect base = main" "yes" "$(echo "$out" | grep -q '^base: main' && echo yes || echo no)"
 assert_eq "reports head_commit"     "yes" "$(echo "$out" | grep -q '^head_commit: [0-9a-f]\{40\}' && echo yes || echo no)"
 assert_eq "lists changed file new.txt" "yes" "$(echo "$out" | grep -q 'new.txt' && echo yes || echo no)"
+assert_eq "prints scale summary (M4)" "yes" "$(echo "$out" | grep -q '^scale: files=.*behaviour-surfaces=' && echo yes || echo no)"
 
 # --- Case 2: explicit base argument is honoured ---
 out2="$(cd "$w" && "$BD" feature main 2>/dev/null)"
