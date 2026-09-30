@@ -38,6 +38,16 @@
 
 > After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted, each declaring a recognized `Technique` and an independent `Expected source`.
 
+## Technique coverage (quantify each enumerable technique — a complex space can't collapse to one check)
+> One row per **enumerable** technique you used (`decision-table`, `state-transition`, `pairwise`, `boundary`) with a **numeric** coverage claim. `verify-coverage.sh` fails closed if an enumerable technique is used in `## Items` but this section is missing or its claim states no number (whether the number is *arithmetically right* is the step-6.5 review's call). Non-enumerable techniques (`equivalence`/`use-case`/`error-guessing`/`classification-tree`/`exploratory`/`n/a`) need no row here.
+
+| Technique | Coverage claim (state the numbers) |
+|-----------|------------------------------------|
+| decision-table | <N feasible rules, N covered (dropped M infeasible, merged K don't-cares)> |
+| state-transition | <criterion, V valid + I invalid transitions> |
+| pairwise | <N cases, all 2-way pairs; t=3 on {…}> |
+| boundary | <N classes / min−1·min·max·max+1 per ordered field {…}> |
+
 ## Changed-surface coverage (Test-Gap — every changed behaviour maps to a check, so the checklist scales to the diff)
 > **Frozen from `changed-surfaces.sh <branch> [base]` at approval.** This is what stops a big change ("2000 lines") from being "covered" by a handful of items: each changed behaviour-surface (a changed non-noise file, or `file::function` where git names the hunk) must map to **≥1 item ID from ## Items**, or an explicit **`N/A — <reason>`** (pure refactor/rename, config-only, dead code, generated). `verify-gap.sh <this-file> <surfaces-file>` fails closed on any surface with **no row** (unmapped) or a row with **no covering item and no reasoned N/A**. Structural only — that the named items *truly exercise* the surface is checked at the step-6.5 review. Paste the `changed-surfaces.sh` output as the rows; do **not** trim it to make the gate pass (the frozen surfaces file is the source of truth the merge-gate re-checks).
 

@@ -19,6 +19,11 @@
 #      "manual"/"tested it"/"-" is rejected, so "I tested a few values/combos" can't pass for coverage.
 #      Whether the chosen technique is the RIGHT one for the feature is SEMANTIC (step-6.5 review), same
 #      split as the oracle check. See test-design-techniques.md.
+#   5. Technique-as-quota (STRUCTURAL only) — when an ENUMERABLE technique (decision-table/state-
+#      transition/pairwise/boundary) is used, the ## Technique coverage section must carry a claim WITH
+#      a number for it (N rules / V+I transitions / N cases / N classes) — so a complex space can't
+#      collapse to one check. The number's arithmetic correctness is SEMANTIC (step-6.5 review).
+#      See test-design-techniques.md.
 #
 # Usage: verify-coverage.sh <manifest.md> <report.md>
 # Output: COVERAGE-OK (exit 0) or a list of violations (exit 1).
@@ -140,6 +145,50 @@ while IFS=$'\t' read -r id jr src tech; do
   fi
 done < "$tmp/items"
 
+# --- M2: technique-as-quota — an ENUMERABLE technique must carry a NUMERIC coverage claim ---
+# decision-table/state-transition/pairwise/boundary have a countable target (rules/transitions/cases/
+# classes); tagging one and staying silent on "how many" lets a complex space collapse to one check.
+# STRUCTURAL only: the gate requires a claim WITH a number to exist per used enumerable technique — it
+# does NOT check the number is arithmetically right (that's the step-6.5 review, same split as oracle).
+fam_of() {
+  local s; s="$(printf '%s' "$1" | tr 'A-Z' 'a-z')"
+  if printf '%s' "$s" | grep -qE 'decision[ _-]?table|(^|[^a-z])dt([^a-z]|$)'; then echo decision-table; return; fi
+  if printf '%s' "$s" | grep -qE 'state[ _-]?transition|state[ _-]?machine|n-?switch|switch coverage|(^|[^a-z])fsm([^a-z]|$)'; then echo state-transition; return; fi
+  if printf '%s' "$s" | grep -qE 'pairwise|combinatorial|all-?pairs|t=[0-9]|n-?wise'; then echo pairwise; return; fi
+  if printf '%s' "$s" | grep -qE 'boundary|(^|[^a-z])bva([^a-z]|$)'; then echo boundary; return; fi
+  echo ""
+}
+if [ "$has_techcol" -eq 1 ]; then
+  cut -f4 "$tmp/items" | while IFS= read -r tk; do fam_of "$tk"; done | grep -v '^$' | sort -u > "$tmp/famused"
+  if [ -s "$tmp/famused" ]; then
+    TC_RE="${QA_RE_TECHCOV:-Technique coverage|Покрытие[^|]*техник}"
+    has_tcsection=0
+    awk -v R="$TC_RE" '$0 ~ ("^## +(" R ")"){f=1} END{exit !f}' "$man" && has_tcsection=1
+    awk -v R="$TC_RE" '
+      $0 ~ ("^## +(" R ")"){ins=1;seen=0;next} ins&&/^## /{ins=0}
+      ins&&/^\|/{ body=$0; sub(/^\|/,"",body); sub(/\|[[:space:]]*$/,"",body); split(body,f,"|")
+        c1=f[1]; gsub(/[[:space:]]/,"",c1); if(c1 ~ /^:?-+:?$/)next
+        if(!seen){seen=1;next}
+        t=f[1]; c=f[2]; gsub(/^[[:space:]]+|[[:space:]]+$/,"",t); gsub(/\t/," ",t); gsub(/\t/," ",c)
+        if(t!="") print t "\t" c }
+    ' "$man" > "$tmp/tcrows"
+    : > "$tmp/famclaim"
+    while IFS=$'\t' read -r tcname claim; do
+      f="$(fam_of "$tcname")"; [ -n "$f" ] || continue
+      printf '%s' "$claim" | grep -qE '[0-9]' && echo "$f" >> "$tmp/famclaim"
+    done < "$tmp/tcrows"
+    sort -u "$tmp/famclaim" -o "$tmp/famclaim" 2>/dev/null || true
+    if [ "$has_tcsection" -ne 1 ]; then
+      fail "manifest uses enumerable technique(s) [$(paste -sd, "$tmp/famused")] but has no '## Technique coverage' section — state a numeric coverage claim per technique (decision-table: N feasible rules; state-transition: V valid+I invalid; pairwise: N cases; boundary: N classes). See references/test-design-techniques.md"
+    else
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        grep -qxF "$f" "$tmp/famclaim" || fail "technique '$f' is used but its ## Technique coverage claim states no number — quantify the target it covers (rules/transitions/cases/classes), so a complex space can't collapse to a single check"
+      done < "$tmp/famused"
+    fi
+  fi
+fi
+
 # --- report results: ID -> terminal status (## Checklist results; columns by header) ---
 awk -v R="$RESULTS_RE" '
   $0 ~ ("^## +(" R ")") {insec=1; seen=0; idc=0; rc=0; next}
@@ -194,7 +243,7 @@ if [ -n "$drift" ]; then
 fi
 
 if [ "$viol" -eq 0 ]; then
-  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each declares an Expected source and a test-design Technique (soundness of both verified semantically at step 6.5, not here)"
+  echo "COVERAGE-OK: all ${napproved:-0} approved item(s) accounted for; every item journey-rooted across ${njourneys:-0} journey(s); each declares an Expected source and a test-design Technique, and every enumerable technique carries a numeric coverage claim (soundness of all three verified semantically at step 6.5, not here)"
   exit 0
 fi
 echo "---"

@@ -29,6 +29,11 @@ cat > "$tmp/manifest.md" <<'MD'
 | 1 | J1 | boundary | `curl -XPOST /api/charge` | balance-10 | hand calc: 100-10 (spec §4) |
 | 2 | J1 | equivalence | `curl -XPOST /api/refund` | balance+refund | invariant: refund credits back |
 | 3 | J2 | state-transition | admin UI: approve payout #5515 | paid | spec: payout state=paid |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 3 classes: min/max/zero |
+| state-transition | 4 valid + 2 invalid transitions |
 MD
 
 # Report that accounts for all 3 ids -> COVERAGE-OK (0)
@@ -234,6 +239,10 @@ cat > "$tmp/man_metamorphic.md" <<'MD'
 | ID | Journey | Technique | What to run | Expected | Expected source |
 |----|---------|-----------|-------------|----------|-----------------|
 | 1 | J1 | boundary | `curl /api/charge` | debit == credit | metamorphic: double-entry invariant |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 4 classes: min-1/min/max/max+1 |
 MD
 assert_eq "metamorphic oracle -> exit 0" "0" "$(rc "$tmp/man_metamorphic.md" "$tmp/rep_one.md")"
 
@@ -262,6 +271,10 @@ cat > "$tmp/man_ru_ok.md" <<'MD'
 | ID | Journey | Technique | What to run | Expected | Expected source |
 |----|---------|-----------|-------------|----------|-----------------|
 | 1 | J1 | boundary | `curl /api/charge` | balance-10 | ручной расчёт |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 4 classes covered |
 MD
 cat > "$tmp/rep_ru.md" <<'MD'
 # Отчёт
@@ -346,6 +359,13 @@ cat > "$tmp/man_goodtech.md" <<'MD'
 | 3 | J1 | pairwise t=2 | Card x US x Mobile | accepted | spec: checkout matrix |
 | 4 | J1 | BVA | qty=100 (max+1) | rejected | spec: qty range 1-99 |
 | 5 | J1 | n/a — trivial copy rename | open settings page | title reads "Settings" | design mock |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| decision-table | 8 feasible rules, 8 covered |
+| state-transition | 6 valid + 4 invalid transitions |
+| pairwise | 18 cases, all 2-way pairs |
+| boundary | 5 classes: null/0/neg/valid/max |
 MD
 cat > "$tmp/rep_goodtech.md" <<'MD'
 # Test Report
@@ -359,6 +379,71 @@ cat > "$tmp/rep_goodtech.md" <<'MD'
 | 5 | settings | open page | pass | observed-data | R1 | Settings |
 MD
 assert_eq "recognized techniques (names/abbrev/n-a) -> exit 0" "0" "$(rc "$tmp/man_goodtech.md" "$tmp/rep_goodtech.md")"
+
+# --- Technique-as-quota (M2): an enumerable technique needs a numeric coverage claim ---
+# boundary used but NO ## Technique coverage section -> FAIL
+cat > "$tmp/man_notccov.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
+MD
+assert_eq "enumerable technique, no Technique-coverage section -> exit 1" "1" "$(rc "$tmp/man_notccov.md" "$tmp/rep_one.md")"
+
+# section present but the claim states NO number -> FAIL
+cat > "$tmp/man_tcnonum.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | covered the important edges |
+MD
+assert_eq "technique-coverage claim without a number -> exit 1" "1" "$(rc "$tmp/man_tcnonum.md" "$tmp/rep_one.md")"
+
+# section present WITH a number -> exit 0
+cat > "$tmp/man_tcok.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 4 classes: min-1/min/max/max+1 |
+MD
+assert_eq "technique-coverage claim with a number -> exit 0" "0" "$(rc "$tmp/man_tcok.md" "$tmp/rep_one.md")"
+
+# a non-enumerable technique (use-case) needs NO numeric claim -> exit 0 even without the section
+cat > "$tmp/man_nonenum.md" <<'MD'
+# Checklist manifest
+## Journeys
+| J | Actor | Action | Outcome |
+|---|-------|--------|---------|
+| J1 | customer | places a charge | balance debited |
+## Items
+| ID | Journey | Technique | What to run | Expected | Expected source |
+|----|---------|-----------|-------------|----------|-----------------|
+| 1 | J1 | use-case | `curl /api/charge` | balance-10 | hand calc |
+MD
+assert_eq "non-enumerable technique, no section -> exit 0" "0" "$(rc "$tmp/man_nonenum.md" "$tmp/rep_one.md")"
 
 # Missing manifest / report files -> exit 1
 assert_eq "missing manifest -> exit 1" "1" "$(rc "$tmp/nope.md" "$tmp/rep_full.md")"

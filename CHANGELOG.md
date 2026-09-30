@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.40.0] - 2026-09-30
+
+### Added (M2–M5 — coverage scaling, completing the series started in 2.39.0)
+- **M2 — technique-as-quota (`verify-coverage.sh`).** When an **enumerable** technique
+  (`decision-table`/`state-transition`/`pairwise`/`boundary`) is used in `## Items`, the manifest's new
+  **`## Technique coverage`** section must carry a **numeric** claim for it (N rules / V+I transitions /
+  N cases / N classes). Fails closed if the section is missing or the claim states no number — so a
+  complex space can't collapse to one check. Structural only; the number's arithmetic is the step-6.5
+  review's call. Non-enumerable techniques (`equivalence`/`use-case`/`error-guessing`/…) need no row.
+- **M3 — `scripts/blast-radius.sh <branch> [base]`.** Lists the **callers of each changed symbol**
+  (reverse-dependencies) so the change's blast radius surfaces as **regression** items instead of being
+  forgotten. Advisory (not a gate); portable recursive grep, excludes tests/vendored code. Also a
+  `--surfaces <file> [--root <dir>]` mode for tests.
+- **M4 — `branch-diff.sh` prints a `scale:` summary** (files, ±lines, **behaviour-surface count**) so the
+  checklist is right-sized to the change's magnitude — the surface count is the floor the checklist must clear.
+- **M5 — step-6.5 completeness critic strengthened** with coverage-scaling semantic checks: a mapped
+  surface whose item doesn't actually exercise it, an enumerable technique whose numeric claim is wrong/
+  hand-wavy, a blast-radius caller that never became a regression item, a checklist implausibly small for
+  the `scale:` count. The gates are structural; this is the semantic backstop.
+
+### Changed
+- Manifest template gains the `## Technique coverage` section; `test-iteration` step 2 reads the `scale:`
+  floor, step 6 runs `blast-radius.sh`, step 5 requires a numeric claim per enumerable technique, and the
+  6.5 review checks all of the above. README updated with the two new scripts + the quota rule.
+
+### Notes
+- **Breaking for manifests that use an enumerable technique:** they now need a `## Technique coverage`
+  section with a numeric claim per such technique, or `verify-coverage.sh` fails. Manifests using only
+  non-enumerable techniques are unaffected.
+- Completes the coverage-scaling series (M1 shipped in 2.39.0 as the Test-Gap gate).
+
 ## [2.39.0] - 2026-09-30
 
 ### Added (M1 — Test-Gap gate: coverage now scales to the diff)

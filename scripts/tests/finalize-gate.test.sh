@@ -44,6 +44,10 @@ Landed: double-spend via concurrent /charge -> item 1 (repro test attached). Not
 |----|---------|-----------|-------------|----------|-----------------|
 | 1 | J1 | boundary | `curl /charge` | balance-10 | hand calc: 100-10 |
 | 2 | J1 | equivalence | `curl /refund` | balance+refund | invariant: refund credits back |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 4 classes: min-1/min/max/max+1 |
 MD
 
 cat > "$tmp/report_green.md" <<'MD'
@@ -221,6 +225,10 @@ Landed: double-spend via concurrent /charge -> item 1. Not landed: negative amou
 |----|---------|-----------|-------------|----------|-----------------|
 | 1 | J1 | boundary | `curl /charge` | balance-10 | hand calc: 100-10 |
 | 2 | J1 | equivalence | `curl /refund` | balance+refund | invariant: refund credits back |
+## Technique coverage
+| Technique | Coverage claim |
+|-----------|----------------|
+| boundary | 4 classes: min-1/min/max/max+1 |
 ## Changed-surface coverage
 | Changed surface | Covered by items | Notes |
 |-----------------|------------------|-------|
