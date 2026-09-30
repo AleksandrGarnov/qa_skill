@@ -21,7 +21,7 @@ PY
 
 print_paths() {
   local docs_dir="$1" task_id="$2" run_id="$3"
-  local docs_abs task_slug run_slug bundle_dir manifest_md manifest_json report_md report_json artifacts_json gates_dir artifacts_dir
+  local docs_abs task_slug run_slug bundle_dir manifest_md manifest_json report_md report_json artifacts_json gates_dir artifacts_dir surfaces_txt
 
   docs_abs="$(cd "$docs_dir" 2>/dev/null && pwd)" || return 1
   task_slug="$(slugify "$task_id")"
@@ -32,6 +32,7 @@ print_paths() {
   report_md="$bundle_dir/report.md"
   report_json="$bundle_dir/report.json"
   artifacts_json="$bundle_dir/artifacts.json"
+  surfaces_txt="$bundle_dir/surfaces.txt"
   gates_dir="$bundle_dir/gates"
   artifacts_dir="$bundle_dir/artifacts"
 
@@ -41,6 +42,7 @@ print_paths() {
   printf 'REPORT-MD: %s\n' "$report_md"
   printf 'REPORT-JSON: %s\n' "$report_json"
   printf 'ARTIFACTS-JSON: %s\n' "$artifacts_json"
+  printf 'SURFACES: %s\n' "$surfaces_txt"
   printf 'GATES-DIR: %s\n' "$gates_dir"
   printf 'ARTIFACTS-DIR: %s\n' "$artifacts_dir"
 }
