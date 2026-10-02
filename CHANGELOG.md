@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.41.0] - 2026-10-02
+
+### Added (qa-interview — a pre-test interview that makes testing deeper)
+- **New `qa-interview` skill.** Before the checklist is built, it interrogates the author / product
+  owner / dev for the intent the ticket and code can't give: the exact **oracle** (what "correct" means
+  and where the number comes from), business **rules**, valid/forbidden **state transitions**, real
+  **boundaries** (is null ≠ 0?), the worst-case **failure**, what's **out of scope**, and the **"done"**
+  bar. Reuses grill-me's proven engine — recon-first, ≤5 consequence-framed questions per round each with
+  a recommended default, a fork test + a testability-consequence test, a decisions ledger — plus an
+  ambiguity score (adapted from gsd-spec-phase) across five QA dimensions to know when to stop.
+- **Answers fold into the manifest**, so the checklist is built from intent, not guesses: oracle →
+  `Expected source`; rules/states/boundaries → tagged items + numeric `## Technique coverage`; worst-case
+  → adversarial items; out-of-scope → reasoned `N/A` surfaces; "done" → exit criteria; the Q→A recorded
+  in a new `### Clarifications` block under the manifest's `## Context`.
+- **A critical question left unanswered blocks GO** — it's parked as a `blocked` critical checklist item
+  + a PO question, so the existing "blocked critical item = NO-GO" rule makes a clean GO impossible. An
+  oracle/rule the verdict depends on is never guessed.
+
+### Changed
+- **`test-iteration` gains step 4.7** (one line): run `qa-interview` after the adversarial pass and before
+  triage. The method lives entirely in the new skill — the orchestrator is not bloated. Manifest template
+  gains the optional `### Clarifications` context block; README + plugin/marketplace descriptions updated.
+
+### Notes
+- Additive: no gate, script, or existing manifest changes. The interview strengthens the inputs the
+  existing gates (oracle, technique-coverage, blocked-critical) already enforce.
+
 ## [2.40.0] - 2026-09-30
 
 ### Added (M2–M5 — coverage scaling, completing the series started in 2.39.0)
