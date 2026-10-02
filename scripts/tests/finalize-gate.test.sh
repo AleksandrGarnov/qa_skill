@@ -244,6 +244,31 @@ assert_eq "git merge, surfaces frozen but no coverage section -> BLOCK (2)" "2" 
 # a run-state with a surfaces path that doesn't exist on disk -> GAP skipped (backward-compatible) -> allow (0)
 assert_eq "git merge, surfaces path missing -> GAP skipped, allow (0)" "0" "$(rc "git merge feature/x" "$(printf '{"manifest":"%s","report":"%s","surfaces":"%s","branch":"feature/x"}' "$tmp/manifest_gap.md" "$tmp/report_green.md" "$tmp/nope_surfaces.txt" > "$tmp/state_nosurf.json"; echo "$tmp/state_nosurf.json")")"
 
+# --- Learned-risk (LEARNED) gate: engages only when run-state has knowledge + surfaces ---
+cat > "$tmp/kb.md" <<'MD'
+# QA knowledge base
+| # | Component / area | Recurring risk (category) | Required technique / check | Freq | Learned from |
+|---|------------------|---------------------------|----------------------------|------|--------------|
+| 1 | Wallet | concurrency / in-the-window | state-transition all-transitions | 3 | ESC-01 |
+MD
+state_know() { printf '{"manifest":"%s","report":"%s","surfaces":"%s","knowledge":"%s","branch":"feature/x"}' "$1" "$tmp/report_green.md" "$tmp/surfaces.txt" "$2" > "$tmp/state_know.json"; echo "$tmp/state_know.json"; }
+
+# surfaces.txt touches app/Wallet.php -> Wallet risk in play; manifest_gap.md has no ## Learned risks -> BLOCK
+assert_eq "knowledge set, Wallet risk unaddressed -> BLOCK (2)" "2" "$(rc "git merge feature/x" "$(state_know "$tmp/manifest_gap.md" "$tmp/kb.md")")"
+
+# same manifest + a ## Learned risks row addressing Wallet -> all gates green -> allow (0)
+cp "$tmp/manifest_gap.md" "$tmp/manifest_gap_learned.md"
+cat >> "$tmp/manifest_gap_learned.md" <<'MD'
+## Learned risks
+| # | Component | Recurring risk | Addressed by (items / technique) or N/A — reason |
+|---|-----------|----------------|--------------------------------------------------|
+| 1 | Wallet | concurrency / in-the-window | I1 — state-transition all-transitions |
+MD
+assert_eq "knowledge set, Wallet risk addressed -> allow (0)" "0" "$(rc "git merge feature/x" "$(state_know "$tmp/manifest_gap_learned.md" "$tmp/kb.md")")"
+
+# knowledge path missing on disk -> LEARNED skipped (backward-compatible) -> allow (0)
+assert_eq "knowledge path missing -> LEARNED skipped, allow (0)" "0" "$(rc "git merge feature/x" "$(state_know "$tmp/manifest_gap_learned.md" "$tmp/nope_kb.md")")"
+
 rm -rf "$tmp"
 echo "---"; echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

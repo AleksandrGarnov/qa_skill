@@ -29,6 +29,7 @@
 #     "reportMd": "<abs path>",
 #     "reportJson": "<abs path>",
 #     "surfaces": "<abs path>",   # frozen changed-surfaces.sh list -> enables the Test-Gap (GAP) gate
+#     "knowledge": "<abs path>",  # qa-knowledge.md -> enables the Learned-risk (LEARNED) gate (needs surfaces too)
 #     "branch": "<name>",
 #     "gates": {"context":"pending|green|red", ...}
 #   }
@@ -58,6 +59,7 @@ report="$(jq -r '.reportMd // .report // empty' "$state" 2>/dev/null || true)"
 manifest_json="$(jq -r '.manifestJson // empty' "$state" 2>/dev/null || true)"
 report_json="$(jq -r '.reportJson // empty' "$state" 2>/dev/null || true)"
 surfaces="$(jq -r '.surfaces // empty' "$state" 2>/dev/null || true)"
+knowledge="$(jq -r '.knowledge // empty' "$state" 2>/dev/null || true)"
 schema_version="$(jq -r '.schemaVersion // empty' "$state" 2>/dev/null || true)"
 
 block() { echo "⛔ MERGE BLOCKED by QA gate: $*" >&2; echo "   (a QA run is active: $state)" >&2; exit 2; }
@@ -86,6 +88,12 @@ fails=""
 if [ -n "$surfaces" ] && [ -f "$surfaces" ]; then
   "$here/verify-gap.sh" "$manifest" "$surfaces" >/dev/null 2>&1 || fails="$fails GAP"
 fi
+# Learned-risk gate — only when the run-state points at a knowledge base AND a surfaces list exist
+# (backward-compatible: absent either one skips LEARNED). A changed component with a known recurring
+# risk must be addressed in the manifest's ## Learned risks section.
+if [ -n "$knowledge" ] && [ -f "$knowledge" ] && [ -n "$surfaces" ] && [ -f "$surfaces" ]; then
+  "$here/verify-learned.sh" "$manifest" "$knowledge" "$surfaces" >/dev/null 2>&1 || fails="$fails LEARNED"
+fi
 if [ "$sidecar_aware" -eq 1 ]; then
   [ -n "$manifest_json" ] && [ -f "$manifest_json" ] || block "sidecar-aware QA run but manifestJson is empty/missing on disk — regenerate the bundle (the evidence gate can't be skipped once a structured run is started)"
   [ -n "$report_json" ] && [ -f "$report_json" ] || block "sidecar-aware QA run but reportJson is empty/missing on disk — regenerate the bundle (the evidence gate can't be skipped once a structured run is started)"
@@ -101,5 +109,5 @@ if [ -n "$fails" ]; then
   block "gate(s) not green:$fails — run them to see why (context not gathered, a dropped or not-executed checklist item, an incomplete report, or invalid structured evidence). Fix and re-verify before merging."
 fi
 
-echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK${surfaces:+ · GAP-OK}${manifest_json:+ · SIDECARS-OK · EVIDENCE-OK}) — merge allowed." >&2
+echo "✅ QA gates green (CONTEXT-OK · REPORT-OK · COVERAGE-OK${surfaces:+ · GAP-OK}${knowledge:+ · LEARNED-OK}${manifest_json:+ · SIDECARS-OK · EVIDENCE-OK}) — merge allowed." >&2
 exit 0
