@@ -84,8 +84,9 @@ Build the candidate checks in this order, then consolidate:
 ``` **Pull the project's learned checks** — distilled from past real outcomes — for the changed components, and fold every matching one in (this is how the system gets smarter run-over-run, not a blank slate each time):
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/learned-checks.sh" match <test-docs-path>/learned-checks.md <changed-component-keywords…>
+"${CLAUDE_PLUGIN_ROOT}/scripts/qa-knowledge.sh"   match <test-docs-path>/qa-knowledge.md   <changed-component-keywords…>
 ```
-A matching learned check that you *don't* fold in is a coverage gap the step-6.5 review flags.
+A matching learned check that you *don't* fold in is a coverage gap the step-6.5 review flags. For each **qa-knowledge** hit (a component's known recurring risk — built by the `qa-learn` skill from prior docs), **bias technique selection toward the required technique** and record a row in the manifest's `## Learned risks` section (covering item/technique, or a reasoned `N/A`) — `verify-learned.sh` blocks the merge if a changed component's known risk is left unaddressed.
 7. **Define the oracle per check — expected result, sourced independently.** For every item (above all computed/money/aggregated/state) write the *expected* value **and its source**, where the source is **anything but the implementation under test** (hand calc, spec formula, invariant, reference impl, trusted historical) — "whatever the code returns" is a mock one level up, not an oracle. When the answer can't be pre-computed, use a **metamorphic / property invariant** instead. Invariant patterns + full guidance: **[test-oracle.md](references/test-oracle.md)**. Carry expected + source into the manifest so step-9 checks the observation *against it*, not against plausibility.
 8. **Reconcile + map — every changed surface gets a check (Test-Gap).** Anchor each AC to ≥1 check (an AC with none is a gap); log Jira↔code discrepancies as PO questions. Then enumerate the **changed behaviour-surfaces** deterministically and map each to ≥1 item — this is what stops a large diff from collapsing into a handful of checks:
 ```bash
@@ -138,13 +139,13 @@ bundle_dir="$(printf '%s\n' "$bundle" | sed -n 's/^BUNDLE-DIR: //p')"
 "${CLAUDE_PLUGIN_ROOT}/scripts/changed-surfaces.sh" "$ARGUMENTS" > "$surfaces_txt"
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-.}/.claude"
-printf '{"schemaVersion":1,"runId":"%s","status":"approved","branch":"%s","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"%s","artifactsIndexJson":"%s","surfaces":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending","gap":"pending"}}\n' \
-  "<run-id>" "$ARGUMENTS" "$bundle_dir" "$manifest_md" "$manifest_md" "$manifest_json" "$report_md" "$report_md" "$report_json" "$artifacts_json" "$surfaces_txt" \
+printf '{"schemaVersion":1,"runId":"%s","status":"approved","branch":"%s","bundleDir":"%s","manifest":"%s","manifestMd":"%s","manifestJson":"%s","report":"%s","reportMd":"%s","reportJson":"%s","artifactsIndexJson":"%s","surfaces":"%s","knowledge":"%s","currentRound":"R1","gates":{"context":"pending","coverage":"pending","report":"pending","evidence":"pending","gap":"pending","learned":"pending"}}\n' \
+  "<run-id>" "$ARGUMENTS" "$bundle_dir" "$manifest_md" "$manifest_md" "$manifest_json" "$report_md" "$report_md" "$report_json" "$artifacts_json" "$surfaces_txt" "<test-docs-path>/qa-knowledge.md" \
   > "${CLAUDE_PROJECT_DIR:-.}/.claude/qa-run.json"
 ```
 Write the frozen manifest to **both** `manifest.md` and the adjacent `manifest.json` sidecar. The markdown stays the approval/report surface for humans; the JSON sidecar is the canonical machine-readable contract for automation. Keep the item IDs and journey refs identical across both.
 
-The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass (plus `GAP-OK` when `surfaces` is set) — so a skipped checklist item, ungathered context, or an **untested changed surface** physically cannot reach a merge, regardless of what the agent does. If `manifestJson` / `reportJson` / `surfaces` are declared in the run-state, they must exist on disk too. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
+The bundled **PreToolUse hook** (`hooks/hooks.json` → `finalize-gate.sh`) reads this file and **blocks a `git merge`/`git push`/`gh pr merge` with exit 2** unless `CONTEXT-OK` + `REPORT-OK` + `COVERAGE-OK` all pass (plus `GAP-OK` when `surfaces` is set, and `LEARNED-OK` when a `knowledge` base is set) — so a skipped checklist item, ungathered context, an **untested changed surface**, or an **unaddressed known recurring risk** physically cannot reach a merge, regardless of what the agent does. If `manifestJson` / `reportJson` / `surfaces` / `knowledge` are declared in the run-state, they must exist on disk too. (If this project merges via PR/CI rather than locally, point the hook's matcher at that action instead — see the hook comment.)
 
 ### 8. Run on staging — a full execution record per item
 **Entry criteria (don't start until they hold):** the target is non-prod; staging is reachable; **THIS branch's commit is deployed** —
@@ -213,7 +214,11 @@ If a defect surfaces after GO, capture it ([escaped-defects.md](references/escap
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/learned-checks.sh" add <test-docs-path>/learned-checks.md "<component>" "<the check that would have caught it>" "<the escape that taught it>"
 ```
-A recurring killer item that proved its worth (caught bugs across runs) is also worth adding, not only post-GO escapes. Step 5 pulls these back in automatically. Lightweight: a log line + the learned-check row + a memory note.
+If the **"why not caught" category recurs for that component** (≥2 escapes), also record it as a failure-mode profile so future runs on that component are forced to address it (the Learned-risk gate):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/qa-knowledge.sh" add <test-docs-path>/qa-knowledge.md "<component>" "<recurring risk/category>" "<required technique/check>" "<freq>" "<escape id>"
+```
+A recurring killer item that proved its worth (caught bugs across runs) is also worth adding, not only post-GO escapes. Step 5 pulls both stores back in automatically. Lightweight: a log line + the store rows + a memory note. Run the **`qa-learn`** skill once to seed both stores from the project's whole history, then periodically to re-rank.
 
 Also **record the escape to the confidence ledger** — it resets that component's clean-GO streak, so the presence advice at step 1 honestly reflects that this task class just slipped:
 ```bash

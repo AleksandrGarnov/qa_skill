@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.43.0] - 2026-10-02
+
+### Added (full learning from prior documents — corpus → knowledge base → gate)
+- **`scripts/qa-harvest.sh bugs|escapes|verdicts|summary <docs-dir>`** — deterministic corpus miner.
+  Extracts from *all* prior QA documents: every found bug (component via the `[Feature]` tag + severity),
+  every escaped defect (component + "why not caught" category), verdict history, and a per-component
+  digest ranked by frequency. grep/awk, no model.
+- **`scripts/qa-knowledge.sh add|list|match <file>`** — the **failure-mode knowledge base**
+  (`qa-knowledge.md`): per-component recurring-risk profiles (the risk category that keeps recurring +
+  the technique a future run must apply). `match` is component-column-scoped so a keyword can't match a
+  risk/technique by accident.
+- **`scripts/verify-learned.sh <manifest> <knowledge> <surfaces>`** — the **Learned-risk gate**. For each
+  changed component (from `changed-surfaces.sh`) that has a known recurring risk, the manifest's new
+  **`## Learned risks`** section must address it (item/technique) or dismiss it with a reasoned `N/A`.
+  Fails closed otherwise — a class of bug the corpus already taught us can't silently re-ship. Structural;
+  mitigation adequacy is the step-6.5 review's call. Wired into `finalize-gate.sh` (`LEARNED`), engaged
+  only when the run-state declares both `knowledge` and `surfaces` (backward-compatible).
+- **New `qa-learn` skill** — harvest → curate (agent judgement on what generalises) → write both stores
+  (`learned-checks.md` + `qa-knowledge.md`), with an approval pause. Runs once to seed from history,
+  re-run to re-rank. **Supersedes `learned-backfill`**, which is removed (it was a one-shot subset).
+
+### Changed
+- `test-iteration`: step 5 also recalls `qa-knowledge` and biases technique selection + fills
+  `## Learned risks`; step 7 records `knowledge` in the run-state; step 12 also updates `qa-knowledge`
+  when a "why not caught" category recurs. Manifest template gains the gated `## Learned risks` section.
+  README + plugin/marketplace descriptions updated.
+
+### Notes
+- **No-model by design** (the user's chosen engine): all learning is plain-markdown stores + grep/awk;
+  the intelligence is `qa-learn`'s curation, not retrieval. Honest limit: component matching is
+  keyword-based (a renamed component breaks the link) — re-run `qa-learn` after large renames.
+- **Backward-compatible gate:** `LEARNED` engages only once a `qa-knowledge.md` exists and is wired into
+  the run-state; existing runs are unaffected. Full shell suite green (new: qa-harvest 13, qa-knowledge 9,
+  verify-learned 7; finalize-gate +3 LEARNED).
+
 ## [2.42.0] - 2026-10-02
 
 ### Changed (one checklist, not two — consolidated the templates)

@@ -11,7 +11,7 @@
     {
       "name": "qa-skill",
       "source": "./",
-      "description": "QA skills for Claude Code: test-iteration (full pre-merge QA cycle), qa-interview (pre-test interview extracting the oracle/rules/edges before the checklist), branch-review, qa-research, and jira-context. Tool-agnostic with fallbacks and deterministic scripts.",
+      "description": "QA skills for Claude Code: test-iteration (full pre-merge QA cycle), qa-interview (pre-test interview extracting the oracle/rules/edges), qa-learn (learns from prior QA docs into checks + a failure-mode knowledge base), branch-review, qa-research, and jira-context. Tool-agnostic with fallbacks and deterministic scripts.",
       "category": "testing",
       "tags": ["qa", "testing", "jira", "code-review", "security-review"]
     }

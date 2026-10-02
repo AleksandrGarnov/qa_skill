@@ -64,6 +64,13 @@
 
 > Every surface emitted by `changed-surfaces.sh` must appear here. A surface tested on multiple journeys lists all covering IDs. An `N/A` needs a real reason — a bare `N/A` is rejected. The blast-radius of the change (callers of the changed code) should surface as **Regression** items above, not be dropped here.
 
+## Learned risks (from qa-knowledge — recurring risks for the changed components; gate: `verify-learned.sh`)
+> Recalled at step 5 via `qa-knowledge.sh match <changed-components>`. One row per **known recurring risk** of a component this change touches (distilled from prior docs by `qa-learn`). Each must be **addressed** — point at the covering item(s) / technique — or dismissed as **`N/A — <reason>`**. `verify-learned.sh` fails closed if a changed component with a known risk has no addressing row here, so a class of bug the corpus already taught us can't silently re-ship. Omit the section only when no changed component has a knowledge-base entry.
+
+| # | Component | Recurring risk (category) | Addressed by (items / technique) or `N/A — <reason>` |
+|---|-----------|---------------------------|------------------------------------------------------|
+| 1 | <component> | <e.g. concurrency / in-the-window> | <I3, I4 — state-transition all-transitions> |
+
 ## Entry criteria (check before the run starts)
 - [ ] Environment is available and responding (`<stage-url>`)
 - [ ] The required build/commit is deployed to it (`<commit>` — `verify-deploy.sh` confirms)
