@@ -1,7 +1,9 @@
-# Checklist manifest — <feature / branch>
-> The **frozen, approved contract** for this run (locked at step 7). The report (step 9) is cross-checked against it by `scripts/verify-coverage.sh`, which fails closed if **any item ID here has no result row** (a skipped item) or **any item doesn't trace to a journey** below. Built from **user journeys, not code concerns** — define the journeys first, then hang every item off one.
+# Checklist — <feature / branch>
+> **The single checklist for the run** — the frozen, approved contract (locked at step 7). Everything the QA cycle produces lives here: context, journeys, items, technique + surface coverage, and the entry/exit criteria. The report (step 9) is cross-checked against it by `scripts/verify-coverage.sh`, which fails closed if **any item ID here has no result row** or **any item doesn't trace to a journey**. Built from **user journeys, not code concerns** — define the journeys first, then hang every item off one. For how to right-size the run, which coverage lenses to sweep, the risk rubric, and result buckets, see [checklist-coverage.md](checklist-coverage.md).
 
-**Branch:** <branch>   **Build / commit:** <commit>   **Approved:** <date>
+**Branch:** <branch>   **Base:** <base-branch>   **Build / commit:** <commit>   **Environment:** <stage-url>   **Approved:** <date>
+**What changed (1–2 lines):** <summary>
+**Acceptance criteria (from jira-context):** <AC1, AC2, … one line each — or "AC missing/inferred — flagged">
 **Sidecars:** `manifest.json` mirrors this file for automation; keep the same journey IDs (`J#`) and item IDs here and there, and mirror each item's `technique` field alongside its `acRefs`.
 
 ## Context (system guidelines — gathered BEFORE approval; gate: `verify-context.sh`)
@@ -61,3 +63,31 @@
 | <path/to/Migration_or_config.ext> | N/A | <schema-only, no behaviour path> |
 
 > Every surface emitted by `changed-surfaces.sh` must appear here. A surface tested on multiple journeys lists all covering IDs. An `N/A` needs a real reason — a bare `N/A` is rejected. The blast-radius of the change (callers of the changed code) should surface as **Regression** items above, not be dropped here.
+
+## Entry criteria (check before the run starts)
+- [ ] Environment is available and responding (`<stage-url>`)
+- [ ] The required build/commit is deployed to it (`<commit>` — `verify-deploy.sh` confirms)
+- [ ] Test data and accounts are ready (see the table below)
+
+> Start only after all entry criteria are met. If not met — the run is blocked.
+
+## Test-data preconditions & teardown (per item — plan BEFORE the run) — [test-data-management.md](test-data-management.md)
+> Most `blocked` results are really "the data wasn't ready". List what each non-trivial check needs so it's set up in advance, not discovered mid-run. **Provision a fresh, isolated subject per scenario** (synthetic / newly-created — never a raw production copy; a masked non-prod subset only if production-shape is required) and **plan its teardown in the same row** — creation and cleanup are one decision.
+
+| For item(s) | Account / role | Feature flag | Seed data / fixture (fresh & isolated) | Env | Teardown (how created data is removed, or why safe to leave) |
+|-------------|----------------|--------------|----------------------------------------|-----|-------------------------------------------------------------|
+| <#…> | <new user/role> | <flag=state> | <created via real entry point> | <…> | <API delete / rollback / snapshot reset / retire> |
+
+## Exit criteria (go/no-go thresholds — locked BEFORE testing)
+> Define the verdict in advance, measured against fixed thresholds rather than judged after the fact. Approved together with the items. Any unmet criterion → NO-GO.
+
+**Mandatory core — locked (neither QA nor the user may weaken or remove these):**
+- [ ] 0 open blocker/major bugs
+- [ ] All Smoke (critical path) items pass
+- [ ] Critical-path coverage = 100% (no critical item left blocked / not executed)
+- [ ] Every explicit AC covered & passing on a live observation *(N/A only if the run is flagged `exploratory — no AC`; verdict then capped at ⚠️ GO (exploratory))*
+- [ ] Security findings closed or explicitly mitigated
+
+**Project-specific — stricter lines on top (never replacing the core):**
+- [ ] Regression is green
+- [ ] <feature-specific threshold, e.g. `p95 API latency ≤ 300ms`, `0 console errors`>
