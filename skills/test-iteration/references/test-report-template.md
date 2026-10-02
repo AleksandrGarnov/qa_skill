@@ -76,15 +76,10 @@ Verdict selection rules:
 
 > **Evidence-gate:** a runtime-behaviour AC needs ≥1 `observed-data`/`api-response`/`log`. On `code-read` or `unit:mocked` alone → status **GAP**, not pass. An AC covered only by mocked tests needs ≥1 real-data observation of the *same* behaviour (mock↔reality verified at least once).
 
-## Code coverage matrix (changed code ↔ tests)
-> The mirror of the AC matrix, from the step-5 `changed-code → item` map. Keeps "derive checks from the code" honest: a changed symbol/branch with no covering item is a real gap, not an oversight.
+> **Changed-code ↔ tests coverage is NOT re-tabulated here** — it's the manifest's gated `## Changed-surface coverage` map (every changed surface → ≥1 item or a reasoned N/A, enforced by `verify-gap.sh`). This report only records the *result* side below (the orphan check) and the flow-execution proof; don't maintain a second symbol→item table that drifts from the manifest.
 
-| Changed symbol / branch | File | Covering checklist items | Status |
-|-------------------------|------|--------------------------|--------|
-| <fn / branch / flag> | <path> | #2 | pass |
-
-## Flows / entry points (every operation that exercises the change)
-> From the step-5 enumeration. Each flow is `executed` (you ran it) or `equivalent` (proven to share the *exact* code path of an executed one, with evidence) — never `assumed`. An `assumed`/unswept flow is a coverage gap (NO-GO). "Done" = no flow left unswept.
+## Flows / entry points (execution proof — did you RUN each operation, or only assume it?)
+> The user-facing view of the manifest's changed-surface map: each operation that reaches the change is `executed` (you ran it live) or `equivalent` (proven to share the *exact* code path of an executed one, with evidence) — never `assumed`. An `assumed`/unswept flow is a coverage gap (NO-GO). This table adds the *executed-vs-assumed* signal that the plan-side surface map doesn't carry.
 
 | Flow / operation | Covered by | Status |
 |------------------|-----------|--------|

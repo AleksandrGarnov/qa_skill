@@ -44,7 +44,7 @@
 > After approval this file is the contract. `verify-coverage.sh <this-file> <report.md>` → `COVERAGE-OK` requires the step-9 report to carry a result row for **every** ID above **and** that none is `not executed`/absent (run it, or `blocked` with a documented attempt — never silently skipped), all journey-rooted, each declaring a recognized `Technique` and an independent `Expected source`.
 
 ## Technique coverage (quantify each enumerable technique — a complex space can't collapse to one check)
-> One row per **enumerable** technique you used (`decision-table`, `state-transition`, `pairwise`, `boundary`) with a **numeric** coverage claim. `verify-coverage.sh` fails closed if an enumerable technique is used in `## Items` but this section is missing or its claim states no number (whether the number is *arithmetically right* is the step-6.5 review's call). Non-enumerable techniques (`equivalence`/`use-case`/`error-guessing`/`classification-tree`/`exploratory`/`n/a`) need no row here.
+> **Advisory** (not gated — a digit-presence check is trivially gamed): one row per **enumerable** technique you used (`decision-table`, `state-transition`, `pairwise`, `boundary`) with a **numeric** coverage claim, so the step-6.5 review can check the number is real (e.g. `decision-table: 8 rules` with only 3 items is a gap the reviewer catches). The per-item `Technique` tag in `## Items` *is* gated; this section just makes its coverage auditable. Non-enumerable techniques need no row.
 
 | Technique | Coverage claim (state the numbers) |
 |-----------|------------------------------------|

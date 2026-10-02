@@ -380,8 +380,8 @@ cat > "$tmp/rep_goodtech.md" <<'MD'
 MD
 assert_eq "recognized techniques (names/abbrev/n-a) -> exit 0" "0" "$(rc "$tmp/man_goodtech.md" "$tmp/rep_goodtech.md")"
 
-# --- Technique-as-quota (M2): an enumerable technique needs a numeric coverage claim ---
-# boundary used but NO ## Technique coverage section -> FAIL
+# --- Technique coverage claim is ADVISORY, not gated (M2 downgraded) ---
+# an enumerable technique WITHOUT a ## Technique coverage section must still PASS (only the per-item tag is gated)
 cat > "$tmp/man_notccov.md" <<'MD'
 # Checklist manifest
 ## Journeys
@@ -393,57 +393,7 @@ cat > "$tmp/man_notccov.md" <<'MD'
 |----|---------|-----------|-------------|----------|-----------------|
 | 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
 MD
-assert_eq "enumerable technique, no Technique-coverage section -> exit 1" "1" "$(rc "$tmp/man_notccov.md" "$tmp/rep_one.md")"
-
-# section present but the claim states NO number -> FAIL
-cat > "$tmp/man_tcnonum.md" <<'MD'
-# Checklist manifest
-## Journeys
-| J | Actor | Action | Outcome |
-|---|-------|--------|---------|
-| J1 | customer | places a charge | balance debited |
-## Items
-| ID | Journey | Technique | What to run | Expected | Expected source |
-|----|---------|-----------|-------------|----------|-----------------|
-| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
-## Technique coverage
-| Technique | Coverage claim |
-|-----------|----------------|
-| boundary | covered the important edges |
-MD
-assert_eq "technique-coverage claim without a number -> exit 1" "1" "$(rc "$tmp/man_tcnonum.md" "$tmp/rep_one.md")"
-
-# section present WITH a number -> exit 0
-cat > "$tmp/man_tcok.md" <<'MD'
-# Checklist manifest
-## Journeys
-| J | Actor | Action | Outcome |
-|---|-------|--------|---------|
-| J1 | customer | places a charge | balance debited |
-## Items
-| ID | Journey | Technique | What to run | Expected | Expected source |
-|----|---------|-----------|-------------|----------|-----------------|
-| 1 | J1 | boundary | `curl /api/charge` | balance-10 | hand calc |
-## Technique coverage
-| Technique | Coverage claim |
-|-----------|----------------|
-| boundary | 4 classes: min-1/min/max/max+1 |
-MD
-assert_eq "technique-coverage claim with a number -> exit 0" "0" "$(rc "$tmp/man_tcok.md" "$tmp/rep_one.md")"
-
-# a non-enumerable technique (use-case) needs NO numeric claim -> exit 0 even without the section
-cat > "$tmp/man_nonenum.md" <<'MD'
-# Checklist manifest
-## Journeys
-| J | Actor | Action | Outcome |
-|---|-------|--------|---------|
-| J1 | customer | places a charge | balance debited |
-## Items
-| ID | Journey | Technique | What to run | Expected | Expected source |
-|----|---------|-----------|-------------|----------|-----------------|
-| 1 | J1 | use-case | `curl /api/charge` | balance-10 | hand calc |
-MD
-assert_eq "non-enumerable technique, no section -> exit 0" "0" "$(rc "$tmp/man_nonenum.md" "$tmp/rep_one.md")"
+assert_eq "enumerable technique, no Technique-coverage section -> exit 0 (advisory, not gated)" "0" "$(rc "$tmp/man_notccov.md" "$tmp/rep_one.md")"
 
 # Missing manifest / report files -> exit 1
 assert_eq "missing manifest -> exit 1" "1" "$(rc "$tmp/nope.md" "$tmp/rep_full.md")"
