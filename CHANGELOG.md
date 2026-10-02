@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.0] - 2026-10-02
+
+### Changed (one checklist, not two — consolidated the templates)
+- **The frozen manifest is now the single checklist.** Previously a run produced two artifacts — a
+  `manual-checklist-template.md` (lenses, scope, rubric) *and* a `checklist-manifest-template.md` (the
+  gated contract) — which duplicated journeys/items/oracle. The manifest (the gated source of truth)
+  absorbs the manual checklist's per-run sections — **Entry criteria, Exit criteria (mandatory core +
+  project), and the Test-data preconditions & teardown table** — and its header gains Base / Environment /
+  What-changed / Acceptance-criteria fields.
+- **New `references/checklist-coverage.md`** holds the reusable *drafting* guidance that isn't filled
+  per-run — right-sizing (Scope & tailoring), the coverage lenses (smoke / adversarial / edge / ux /
+  perf / regression) with their measurement how-tos, the risk rubric, and the result-bucket legend. The
+  lenses are now *coverage areas to sweep into the single `## Items` table*, not parallel tables —
+  reinforcing the journey-rooted, one-list design.
+- **Deleted `references/manual-checklist-template.md`.** `test-iteration` step 6 now builds one artifact;
+  SKILL disclosure pointers, `example-cycle.md`, and `CLAUDE.md` updated. No QA depth is lost — every
+  lens, how-to, and rubric moved to `checklist-coverage.md`.
+
+### Notes
+- **Gate-safe:** gates never referenced `manual-checklist` by name; the manifest's gated headers
+  (`## Context` + the 4 `###` blocks, `## Journeys`, `## Items`, `## Technique coverage`,
+  `## Changed-surface coverage`) are unchanged. New sections (Entry/Exit/Test-data) are appended after
+  them, so no gate parser is affected. Full shell suite green.
+
 ## [2.41.0] - 2026-10-02
 
 ### Added (qa-interview — a pre-test interview that makes testing deeper)

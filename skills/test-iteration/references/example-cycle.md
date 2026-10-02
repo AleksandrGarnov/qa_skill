@@ -1,6 +1,6 @@
 # Worked example — a full QA cycle, tailored
 
-A compact, end-to-end illustration of `test-iteration` on a small change. It is **not** a template to copy verbatim — it shows the *shape* of good output: tailored scope, code-derived checks, AC traceability, an honest verdict, and a clean re-test round. Use the real templates ([manual-checklist-template.md](manual-checklist-template.md), [test-report-template.md](test-report-template.md)) for actual runs.
+A compact, end-to-end illustration of `test-iteration` on a small change. It is **not** a template to copy verbatim — it shows the *shape* of good output: tailored scope, code-derived checks, AC traceability, an honest verdict, and a clean re-test round. Use the real templates ([checklist-manifest-template.md](checklist-manifest-template.md) — the single checklist, with [checklist-coverage.md](checklist-coverage.md) as the drafting aid — and [test-report-template.md](test-report-template.md)) for actual runs.
 
 **Scenario:** branch `feature/PAY-412-remember-card`. A "Remember card" checkbox is added to the payment form; when ticked, the masked card number is saved so the field is pre-filled next time.
 
