@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.0] - 2026-10-02
+
+### Changed (simplification — remove friction that was degrading the workflow)
+- **F1 — one source of truth for "every changed thing is tested".** Removed the report's
+  `## Code coverage matrix` (an explicit duplicate of the manifest's gated `## Changed-surface coverage`
+  map). The report now points at that single map and keeps only the orphan-check line + the `## Flows`
+  table — which is re-scoped to the distinct *executed-vs-assumed* signal, not a second symbol→item
+  table. Ends the three-way bookkeeping (manifest surface map + report code-matrix + report flows) that
+  drifted and wasted effort.
+- **F2 — technique-as-quota downgraded from a hard gate to advisory.** `verify-coverage.sh` no longer
+  fails when an enumerable technique lacks a numeric `## Technique coverage` claim: a digit-presence
+  check was trivially gamed (write "8 rules" and pass) — ceremony with weak assurance. The per-item
+  **Technique tag stays gated**; the numeric claim is now template guidance the step-6.5 review checks
+  for real. (This removes a *sub-check inside the COVERAGE gate* — the 7 top-level finalize-gate checks
+  are unchanged; what's gone is the mandatory numeric `## Technique coverage` section.)
+- **F3 — qa-interview is right-sized, not unconditional.** Step 4.7 now runs the pre-test interview only
+  for changes that earn it (money/state, ambiguous/missing ACs, new feature/flow, ≥3 interacting params);
+  a trivial change skips it with a recorded `N/A` reason. Removes the interrogation overhead on one-line
+  changes.
+
+### Notes
+- Net effect: the COVERAGE gate no longer enforces the technique quota (one fewer sub-check; the 7
+  top-level merge-gates are unchanged), the report loses one drift-prone table, and trivial changes skip
+  the interview. No loss of real assurance — the per-item technique tag, the Test-Gap surface map, and
+  the 6.5 semantic review all remain.
+- Gate-safe / behavior-only: no gate parses the removed report table; full shell suite green
+  (verify-coverage 35; the M2 hard-fail cases are replaced by one advisory-pass case).
+
 ## [2.43.0] - 2026-10-02
 
 ### Added (full learning from prior documents — corpus → knowledge base → gate)
