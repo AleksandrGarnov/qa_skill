@@ -7,6 +7,8 @@
 **Build / commit:** <build / commit-hash>
 **Sidecars:** `report.json` mirrors this file for automation; keep the same checklist item IDs, AC IDs, and round labels in both.
 
+> **Right-size:** fill every section that applies to this change; a ceremony section with nothing to report on a small run (Deferred / Variances, Test data & environment, Best practices, Sign-off) is marked `N/A` or omitted. **Never skipped:** Verdict, the Coverage ledger, Checklist results, and the pre-verdict evidence self-audit.
+
 **Prior-test basis (REQUIRED — fill before any verdict):** <one of:>
 - `FRESH` — first test of this task (`prior-tests.sh` = NONE, no prior findings in the Jira discussion / PR comments), **or**
 - `RE-TEST` of <prior doc path / Jira QA comment> on commit <prior-commit> → delta `<prior-commit>..<HEAD>` re-verified; carried-over findings: <R1…> with current status.
@@ -26,7 +28,7 @@ Verdict selection rules:
 - **✅ GO** — all exit criteria met (mandatory core + project additions), no open blocker/major defects, **the Prior-test basis line above is filled** (FRESH or RE-TEST — never blank/"didn't check"), **and the pre-verdict evidence self-audit is clear** (every AC/critical-path pass backed by a quoted raw observation). Not attainable if the run is `exploratory — requirements unverified`.
 - **⚠️ GO WITH DEFERRALS** — allowed ONLY when every deferred defect has a named **mitigation + owner + fix date**. Missing any one of the three → it's a NO-GO, not a "GO with deferrals".
 - **⚠️ GO (exploratory)** — the cap when AC were missing and couldn't be supplied (step-1 gate): the change behaved acceptably against code/risk-derived checks, but with **no verified requirement basis**. Never report a clean ✅ GO in this case.
-- **⛔ NO-GO** — any open blocker, any unmitigated major, critical-path coverage <100%, an open AC/code coverage gap on the critical path, a `blocked` critical-path check, a red regression, or an unresolved security risk.
+- **⛔ NO-GO** — any single trigger in the canonical *NO-GO triggers* list below fires (open blocker, unmitigated major, critical-path coverage <100%, a `blocked` critical item, red regression, unresolved security risk, …). Don't maintain a second copy here — that list is the source of truth.
 
 ## Exit criteria (fixed at approval, BEFORE the run)
 > "A verdict is not a vibe": criteria are the ones approved together with the checklist (step 7-8), not invented here; the verdict is a fact measured against them.
