@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.0] - 2026-10-02
+
+### Changed (second simplification pass — reviewer focus, trivial fast-path, report dedup)
+- **G1 — the step-6.5 completeness reviewer is focused, not overloaded.** It had grown into one run-on
+  sentence asking ~13 things, so a subagent spread thin (violating the plugin's own "≤5 or it answers
+  badly" principle). Rewritten as **4 prioritized checks scoped to the semantics the gates can't do**
+  (oracle independence; mapped-but-not-exercised; silent omissions of AC/research/learned-check/blast-
+  radius caller; weak thresholds) — with an explicit note that surface-mapping existence, technique-tag
+  presence, and no-skipped-items are *already gated*, so the reviewer stops re-checking them.
+- **G2 — explicit fast-path for no-runtime changes.** The adversarial break-it pass (step 4.5) is skipped
+  with a recorded `N/A` for a change with no runtime/behaviour path (copy/CSS/docs/comment/pure-rename);
+  **any money/state/logic/data change always runs it.** (Step 8.5 independent re-execution already
+  self-scopes to critical-path/money-state items, so it no-ops on trivial changes automatically; the
+  interview was right-sized in 2.44.0.) No more full three-subagent ceremony on a one-line copy fix.
+- **G3 — report de-duplicated.** The `⛔ NO-GO` verdict bullet now points at the single canonical
+  *NO-GO triggers* list instead of re-stating it (it was duplicated in ~3 places → drift risk). A top-level
+  right-size note marks the ceremony sections (Deferred, Test-data, Best-practices, Sign-off) omittable
+  when N/A, while fixing Verdict / Coverage ledger / Checklist results / evidence self-audit as never-skip.
+
+### Notes
+- Behavior/prose only; no gate logic changed, full shell suite green. No loss of assurance — the fast-path
+  is fenced to genuinely no-runtime changes, and the reviewer's dropped items were duplicates of existing
+  gates, not new holes.
+
 ## [2.44.0] - 2026-10-02
 
 ### Changed (simplification — remove friction that was degrading the workflow)
