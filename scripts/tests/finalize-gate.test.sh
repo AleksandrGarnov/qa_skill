@@ -269,6 +269,39 @@ assert_eq "knowledge set, Wallet risk addressed -> allow (0)" "0" "$(rc "git mer
 # knowledge path missing on disk -> LEARNED skipped (backward-compatible) -> allow (0)
 assert_eq "knowledge path missing -> LEARNED skipped, allow (0)" "0" "$(rc "git merge feature/x" "$(state_know "$tmp/manifest_gap_learned.md" "$tmp/nope_kb.md")")"
 
+# --- branch scoping + robust command detection (bug: blocked unrelated branches / regex bypass) ---
+mkrepo() { git init -q "$1"; git -C "$1" config user.email t@t.t; git -C "$1" config user.name t; git -C "$1" checkout -q -b "$2"; git -C "$1" commit -q --allow-empty -m init; }
+rc_cwd() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"},"cwd":"%s"}' "$1" "$3" | QA_RUN_STATE="$2" bash "$GATE" >/dev/null 2>&1; echo "$?"; }
+
+repoA="$tmp/repoA"; mkrepo "$repoA" "feature/A"
+repoB="$tmp/repoB"; mkrepo "$repoB" "feature/B"
+# QA run is for feature/A, report not written yet (would block)
+printf '{"manifest":"%s","report":"%s","branch":"feature/A"}' "$tmp/manifest.md" "$tmp/nope.md" > "$tmp/state_A.json"
+stA="$tmp/state_A.json"
+
+# THE BUG: pushing a different branch (HEAD=feature/B) while feature/A's QA runs -> allow (0)
+assert_eq "push on a different branch than the QA run -> allow (0)" "0" "$(rc_cwd "git push origin feature/B" "$stA" "$repoB")"
+# same branch, no report -> BLOCK (2)
+assert_eq "push on the QA run's own branch, no report -> BLOCK (2)" "2" "$(rc_cwd "git push origin feature/A" "$stA" "$repoA")"
+# SAFETY (no bypass): HEAD is a different branch but the command NAMES the QA branch -> still BLOCK
+assert_eq "push naming the QA branch from another HEAD -> BLOCK (2)" "2" "$(rc_cwd "git push origin feature/A" "$stA" "$repoB")"
+
+# regex bypass holes must be caught (same branch -> must BLOCK, not slip through as allow)
+assert_eq "git -C <dir> push is detected -> BLOCK (2)" "2" "$(rc_cwd "git -C $repoA push" "$stA" "$tmp")"
+assert_eq "git -c k=v push is detected -> BLOCK (2)" "2" "$(rc_cwd "git -c user.name=x push origin feature/A" "$stA" "$repoA")"
+assert_eq "git --no-pager push is detected -> BLOCK (2)" "2" "$(rc_cwd "git --no-pager push origin feature/A" "$stA" "$repoA")"
+
+# anti-false-positive: 'merge' as a word inside a non-merge command must NOT engage the gate
+assert_eq "git commit -m 'merge main' -> allow (0, not a merge subcommand)" "0" "$(rc_cwd "git commit -m 'merge main'" "$stA" "$repoA")"
+assert_eq "git status -> allow (0)" "0" "$(rc_cwd "git status" "$stA" "$repoA")"
+
+# gh pr merge with an undeterminable branch -> fail-safe to ENFORCE (can't prove it's a different branch)
+assert_eq "gh pr merge (branch undeterminable) -> BLOCK (2)" "2" "$(rc_cwd "gh pr merge 5 --squash" "$stA" "$repoA")"
+
+# legacy state with NO branch field -> behaviour unchanged (enforce): no report -> BLOCK (2)
+printf '{"manifest":"%s","report":"%s"}' "$tmp/manifest.md" "$tmp/nope.md" > "$tmp/state_nobranch.json"
+assert_eq "legacy state without a branch field -> enforce (BLOCK 2)" "2" "$(rc_cwd "git push origin whatever" "$tmp/state_nobranch.json" "$repoA")"
+
 rm -rf "$tmp"
 echo "---"; echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

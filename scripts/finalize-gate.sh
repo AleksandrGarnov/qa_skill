@@ -9,10 +9,13 @@
 # token stream.
 #
 # Wiring: hooks/hooks.json registers this on PreToolUse(Bash). It is a no-op unless (a) the command
-# is a git merge/push AND (b) a QA run-state file exists (written by test-iteration at steps 7 & 9).
-# So it never interferes with ordinary pushes when no QA is in progress — it only guarantees that,
-# once a QA run is started, you cannot merge it without CONTEXT-OK + REPORT-OK + COVERAGE-OK
-# and, when JSON sidecars are present, SIDECARS-OK (md/json item IDs agree) + EVIDENCE-OK.
+# is a git merge/push (or gh pr merge) AND (b) a QA run-state file exists (written by test-iteration at
+# steps 7 & 9) AND (c) the command operates on the run-state's OWN branch — a push/merge of a DIFFERENT
+# branch in the same working copy is allowed (it is not this run's concern; we only relax when we can
+# prove a different branch, never opening a bypass). So it never interferes with unrelated pushes — it
+# only guarantees that, once a QA run is started, you cannot merge THAT branch without CONTEXT-OK +
+# REPORT-OK + COVERAGE-OK and, when JSON sidecars are present, SIDECARS-OK (md/json item IDs agree) +
+# EVIDENCE-OK.
 #
 # Run-state file (written by the skill): $CLAUDE_PROJECT_DIR/.claude/qa-run.json (override: $QA_RUN_STATE)
 # Legacy minimum:
@@ -44,8 +47,12 @@ input="$(cat 2>/dev/null || true)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
 cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)"
 
-# Only engage on a branch-finalizing action (git merge/push, gh pr merge). Anything else: allow.
-printf '%s' "$cmd" | grep -qE '(^|[^[:alnum:]])(git[[:space:]]+(merge|push)|gh[[:space:]]+pr[[:space:]]+merge)([^[:alnum:]]|$)' || exit 0
+# Only engage on a branch-finalizing action. Allow `git [global-opts] push|merge` — so
+# `git -C <dir> push`, `git -c k=v push`, `git --no-pager push` are NOT a silent bypass — plus
+# `gh pr merge`. Anything else: allow.
+git_push_merge='(^|[^[:alnum:]])git([[:space:]]+--?[A-Za-z][^[:space:]]*([[:space:]]+[^-][^[:space:]]*)?)*[[:space:]]+(push|merge)([^[:alnum:]]|$)'
+gh_pr_merge='(^|[^[:alnum:]])gh[[:space:]]+pr[[:space:]]+merge([^[:alnum:]]|$)'
+printf '%s' "$cmd" | grep -qE "$git_push_merge|$gh_pr_merge" || exit 0
 
 # --- locate the QA run-state ---
 proj="${CLAUDE_PROJECT_DIR:-${cwd:-$PWD}}"
@@ -61,11 +68,34 @@ report_json="$(jq -r '.reportJson // empty' "$state" 2>/dev/null || true)"
 surfaces="$(jq -r '.surfaces // empty' "$state" 2>/dev/null || true)"
 knowledge="$(jq -r '.knowledge // empty' "$state" 2>/dev/null || true)"
 schema_version="$(jq -r '.schemaVersion // empty' "$state" 2>/dev/null || true)"
+state_branch="$(jq -r '.branch // empty' "$state" 2>/dev/null || true)"
 
-block() { echo "⛔ MERGE BLOCKED by QA gate: $*" >&2; echo "   (a QA run is active: $state)" >&2; exit 2; }
+# --- scope the gate to the QA run's OWN branch ---
+# This gate guards ONE branch's QA run (state.branch). A push/merge operating on a DIFFERENT branch in
+# the same working copy is not this run's concern — blocking it is a false positive. Resolve the branch
+# the command operates on and, ONLY when we're confident it's a different branch, allow. We never relax
+# when the command could touch the QA branch (its HEAD is the QA branch, or the QA branch is named in
+# the command) — so this strictly removes false blocks without opening a bypass. A legacy state with no
+# `branch`, or an undeterminable current branch, leaves behaviour unchanged (enforce).
+repo_dir="${cwd:-$PWD}"
+case "$cmd" in
+  *" -C "*) repo_dir="$(printf '%s' "$cmd" | sed -E 's/.*[[:space:]]-C[[:space:]]+([^[:space:]]+).*/\1/')";;
+esac
+if printf '%s' "$cmd" | grep -qE "$gh_pr_merge"; then
+  pr_num="$(printf '%s' "$cmd" | sed -E 's/.*gh[[:space:]]+pr[[:space:]]+merge[[:space:]]+#?([0-9]+).*/\1/')"
+  cur_branch="$( (cd "$repo_dir" 2>/dev/null && gh pr view "$pr_num" --json headRefName -q .headRefName) 2>/dev/null || true)"
+else
+  cur_branch="$(git -C "$repo_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+fi
+if [ -n "$state_branch" ] && [ -n "$cur_branch" ] && [ "$cur_branch" != "$state_branch" ] \
+   && ! printf '%s' "$cmd" | grep -qF "$state_branch"; then
+  exit 0   # operating on a different branch than this QA run — not our concern
+fi
 
-[ -n "$manifest" ] && [ -f "$manifest" ] || block "no frozen checklist manifest found — approve a manifest (step 7) before merging"
-[ -n "$report" ] && [ -f "$report" ] || block "no test report yet — a QA run is in progress for this branch but has no report; finish it before merging"
+block() { echo "⛔ MERGE BLOCKED by QA gate: $*" >&2; echo "   (QA run: $state)" >&2; exit 2; }
+
+[ -n "$manifest" ] && [ -f "$manifest" ] || block "QA run on branch '${state_branch:-?}' has no frozen checklist manifest — approve one (step 7) before merging"
+[ -n "$report" ] && [ -f "$report" ] || block "QA run on branch '${state_branch:-?}' has no test report yet (you are on '${cur_branch:-?}') — finish it, or clear $state if that run was abandoned"
 
 # A SIDECAR-AWARE run-state (schemaVersion set, or any sidecar path declared) MUST carry both JSON
 # sidecars + the artifacts index and pass EVIDENCE-OK. Keying "run the evidence gate" on BOTH

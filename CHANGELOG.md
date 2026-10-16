@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.1] - 2026-10-16
+
+### Fixed (finalize-gate blocked pushes of unrelated branches)
+- **The merge-gate now scopes to the QA run's own branch.** It read `branch` from `qa-run.json` but
+  never checked it, so *any* `git push`/`merge` in the working copy was blocked while any QA run was
+  active — including a push of a completely unrelated branch, with a misleading "a QA run is in progress
+  for this branch" message. The gate now resolves the branch the command operates on (the repo's HEAD,
+  the `-C <dir>` target, or a PR's `headRefName` for `gh pr merge`) and **allows it when it can prove a
+  different branch than the run's** — HEAD differs *and* the run's branch isn't named in the command. It
+  never relaxes when the command could touch the QA branch, so this removes false blocks without opening
+  a bypass. (Reported incident: a QA run on `feature/LM-10506` blocked a push of `feature/LM-10462`.)
+- **Command detection hardened.** The old pattern matched only `git <push|merge>` verbatim, so
+  `git -C <dir> push`, `git -c k=v push`, and `git --no-pager push` slipped through un-gated. The matcher
+  now allows global git options before the subcommand (while still ignoring `merge`/`push` that appear as
+  words inside other commands, e.g. `git commit -m "merge main"`).
+- **Honest block message.** It now names the run's branch and your current branch, and points at clearing
+  `.claude/qa-run.json` if that run was abandoned.
+
+### Notes
+- Backward-compatible: a legacy run-state without a `branch` field, or an undeterminable current branch,
+  falls back to the previous (enforce) behaviour — fail-safe, never a new bypass. Full shell suite green
+  (finalize-gate +10 cases: the incident, no-bypass safety, the three option-form holes, and
+  anti-false-positive on `merge` inside a quoted message).
+- Follow-ups not in this fix (bigger, touch the run-state schema/writer): per-branch state files so two
+  QA runs in one working copy don't clobber each other; a staleness/TTL + explicit-reset for abandoned
+  runs. Flagged for a separate change.
+
 ## [2.45.0] - 2026-10-02
 
 ### Changed (second simplification pass — reviewer focus, trivial fast-path, report dedup)
