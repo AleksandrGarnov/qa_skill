@@ -1,0 +1,1 @@
+Протестируй ветку feature/LM-1-discount перед мержем в main.

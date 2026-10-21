@@ -15,13 +15,16 @@ jobs:
 
       - name: Syntax-check every script
         run: |
-          for f in scripts/*.sh scripts/tests/*.sh *.sh; do
+          for f in scripts/*.sh scripts/tests/*.sh evals/*.sh evals/*/*.sh *.sh; do
             [ -e "$f" ] || continue
             bash -n "$f"
           done
 
       - name: Run the shell test suites
         run: bash scripts/tests/run-all.sh
+
+      - name: Structural checks (links resolve, no orphan references, evals wired)
+        run: bash evals/check-structure.sh
 
       - name: Validate plugin + marketplace manifests
         run: |
