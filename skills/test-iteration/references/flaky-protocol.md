@@ -5,6 +5,8 @@ A check that passes on one run and fails on the next **without the build changin
 ## 1. Detect — by flip, not by one retry
 If a result flips between pass/fail across runs of the **same build**, it's flaky. Don't infer health from "it passed on retry #2" — a retried pass is **flake telemetry to investigate**, not evidence the behaviour works.
 
+**Already red before you touched anything?** A failing standing test is one of three things — classify before acting: **flaky** (flips on re-run → this protocol), **known-failing** (also fails on the base branch / predates and is unrelated to the change → record as environment context, not a finding of this run), or **in-scope regression** (deterministic and within the changed code's reach → a real `fail`). Only the last one is this change's defect.
+
 ## 2. Bucket it `flaky` (distinct from pass/fail)
 Record the result as `flaky` with the raw outputs of both the passing and failing observation. A `flaky` result on the **critical path is a coverage gap** (you don't actually know the behaviour) → it blocks a clean GO until resolved, exactly like `blocked`.
 

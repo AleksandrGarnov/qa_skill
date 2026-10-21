@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.48.0] - 2026-10-22
+
+### Added (branch-review: cheap signals first, confirmed vs suspected)
+- **Step 1.5 — cheap signals.** Before any model reads the diff, `branch-review` runs the project's **own**
+  linter / type-checker / static analyzer (always safe — they don't execute app code), scoped to the
+  changed files. Raw output goes to `$TMPDIR/qa-signals/<tool>.txt`; only a digest (count + offenders in
+  the changed files) enters context. Never installs dependencies or introduces a tool.
+- **The project's test suite runs only when its DB/service target is provably local and isolated**
+  (SQLite `:memory:`, a local test DB, a test container). A suite can migrate or truncate whatever
+  database it points at, so an unconfirmed target → `tests: skipped — DB target not confirmed isolated`.
+  Never against staging/shared/production, never on a server.
+- **Red-test triage** before a failure becomes a finding: flaky / **known-failing** (fails on base too,
+  unrelated → environment context) / **in-scope regression** (→ a `confirmed` finding, `source:signal`).
+  The `known-failing` bucket is added to `flaky-protocol.md` as well.
+- **Every finding is labelled `confirmed (<what proved it>)` or `suspected`.** Confirmed = something
+  actually produced the wrong behaviour (an in-scope red test, a tool error, a repro that failed as
+  predicted); anything inferred from reading is suspected. A suspected finding with no `file:line` +
+  concrete failure scenario is demoted to a note.
+- **Optional confirmation tier:** an installed repro skill that doesn't edit code (e.g. `qa-bug-hunter`)
+  can be handed the `[H]` suspected findings by `file:line`; a failing repro → confirmed with its path, a
+  passing one → downgraded and said so, never silently dropped.
+
+### Changed
+- `test-iteration` step 3-4: a `suspected` review finding is a lead, not a result — it becomes a runtime
+  checklist item that staging confirms or refutes, and never closes or fails an AC on its own.
+
+### Notes
+- Verified with the behavioral eval harness (`evals/02`): on the planted discount bug the review ran the
+  function locally, labelled the negative-price defect `confirmed (manual run)` with the observed output,
+  kept the unspecified-rounding note `suspected`, and reported `signals: none available` honestly.
 ## [2.47.0] - 2026-10-22
 
 ### Added (cross-run bug identity + honest repro provenance)
