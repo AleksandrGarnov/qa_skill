@@ -12,6 +12,14 @@
 #   - docs/assets/lockfiles/generated/vendored paths
 #   - test & fixture files (they are test code, not the surface under test)
 #
+# Migrations are NOT noise: a schema change is behaviour, so each migration file is a surface.
+# Runtime/infra changes add ONE synthetic surface, "@runtime::cold-start": when the diff touches what
+# the app boots from — migrations, Dockerfile/compose, dependency manifests or lockfiles, framework
+# config/, deploy/k8s/helm/infra manifests, .env examples, web/process-server config — a page-level
+# check of the feature isn't enough; the freshly deployed build must boot, migrate, and serve its first
+# request. verify-gap.sh then requires that surface to be mapped to a cold-start smoke item (or a
+# reasoned N/A) like any other — no new gate, the existing Test-Gap one enforces it.
+#
 # Usage:
 #   changed-surfaces.sh <branch> [base]        # resolve base like branch-diff.sh, diff, enumerate
 #   changed-surfaces.sh --diff <unified-diff>   # parse a saved `git diff` (used by the self-tests)
@@ -47,12 +55,30 @@ emit_diff() {
 }
 
 emit_diff "$@" | awk '
+  function runtime(p) {
+    return (p ~ /(^|\/)(migrations?|db\/migrate)\//) ||
+           (p ~ /(^|\/)(Dockerfile[^\/]*|\.dockerignore|Procfile|crontab|php\.ini)$/) ||
+           (p ~ /(^|\/)(docker-)?compose[^\/]*\.ya?ml$/) ||
+           (p ~ /(^|\/)(package\.json|composer\.json|requirements[^\/]*\.txt|pyproject\.toml|Pipfile|go\.mod|Gemfile|Cargo\.toml|pom\.xml|build\.gradle(\.kts)?)$/) ||
+           (p ~ /(^|\/)(package-lock\.json|yarn\.lock|composer\.lock|pnpm-lock\.yaml|Gemfile\.lock|go\.sum|poetry\.lock|Pipfile\.lock|Cargo\.lock)$/) ||
+           (p ~ /(^|\/)(config|k8s|kubernetes|helm|charts|deploy|deployment|infra|\.docker|docker)\//) ||
+           (p ~ /(^|\/)\.env(\.[^\/]+)?\.example$/) ||
+           (p ~ /(^|\/)(nginx|apache2?|httpd|supervisord?)[^\/]*\.conf$/)
+  }
+  # migration files are behaviour even though their extension/dir would otherwise look like noise
+  function isMigration(p) { return (p ~ /(^|\/)(migrations?|db\/migrate)\//) && (p !~ /\.(md|txt)$/) }
+  /^diff --git / {
+    hp=$0; sub(/^diff --git a\/[^ ]* b\//,"",hp); gsub(/\r/,"",hp)
+    if (runtime(hp)) coldstart=1
+    next
+  }
   function noise(p) {
+    if (isMigration(p)) return 0
     return (p ~ /(^|\/)(node_modules|vendor|dist|build|out|target|\.git|coverage|__pycache__)\//) ||
            (p ~ /\.(md|markdown|txt|rst|adoc|lock|map|snap|min\.js|min\.css|png|jpe?g|gif|svg|ico|pdf|woff2?|ttf|eot|csv|yml|yaml|json|toml|ini|cfg|env)$/) ||
            (p ~ /(^|\/)(package-lock\.json|yarn\.lock|composer\.lock|pnpm-lock\.yaml|Gemfile\.lock|go\.sum|poetry\.lock)$/) ||
            (p ~ /(\.test\.|\.spec\.|_test\.|_spec\.|Test\.php$|\.stories\.)/) ||
-           (p ~ /(^|\/)(tests?|__tests__|__mocks__|spec|specs|e2e|cypress|fixtures?|snapshots?|migrations?)\//)
+           (p ~ /(^|\/)(tests?|__tests__|__mocks__|spec|specs|e2e|cypress|fixtures?|snapshots?)\//)
   }
   /^\+\+\+ / {
     path=$0; sub(/^\+\+\+ /,"",path); gsub(/\r/,"",path); sub(/^b\//,"",path)
@@ -82,5 +108,6 @@ emit_diff "$@" | awk '
     for (k in sym) print k
     # bare file surface only when the file has a context-less hunk or no named context at all
     for (f in files) if (bare[f] || !hassym[f]) print f
+    if (coldstart) print "@runtime::cold-start"
   }
 ' | sort -u

@@ -93,7 +93,7 @@ A matching learned check that you *don't* fold in is a coverage gap the step-6.5
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/changed-surfaces.sh" <branch> [base]   # -> file / file::function per changed non-noise hunk
 ```
-Every surface it prints must map to **≥1 item ID**, or an explicit **`N/A — <reason>`** (pure refactor/rename, config-only, dead code, generated). A surface with no covering item is a Test-Gap — add a check (don't trim the list). This is the same `changed-code → item` map step 9's code-orphan check uses.
+Every surface it prints must map to **≥1 item ID**, or an explicit **`N/A — <reason>`** (pure refactor/rename, dead code, generated). Migration files are surfaces (pull the `data-migrations` pack); a **`@runtime::cold-start`** line means the diff touched what the app boots from — map it to a **cold-start smoke** item run first ([checklist-coverage.md](references/checklist-coverage.md) → Smoke). A surface with no covering item is a Test-Gap — add a check (don't trim the list). This is the same `changed-code → item` map step 9's code-orphan check uses.
 **Done when:** one risk-ranked list — AC-anchored, journey-organized, with failure-modes/flows/code/packs folded in, each check carrying an **independently-sourced expected (or a metamorphic invariant)**, blast-radius callers as regression items, and **every changed surface from `changed-surfaces.sh` mapped to ≥1 item or a reasoned N/A**.
 
 ### 6. Checklist + exit criteria
