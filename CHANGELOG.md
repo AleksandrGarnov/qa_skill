@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.53.0] - 2026-10-22
+
+### Added (branch-review: history context + independent scoring of suspicions)
+- **Step 1.7 — history of the changed files.** `git log` of the changed files for prior fixes/reverts, and
+  (with `gh`) the inline review comments from the last ~5 merged PRs that touched them, handed to the
+  reviewers as context — a past concern becomes a finding only if the current diff repeats it.
+  `history:` is reported (git+PR comments / git only / none).
+- **Independent confidence scoring.** One fresh scorer subagent (batched, cheaper model fine) grades every
+  `suspected` finding 0–100 on a fixed rubric, given the finding, the hunk, and CLAUDE.md — **not** the
+  reviewer's reasoning. Pre-existing issues, unchanged lines, linter-catchable, pure style, and explicitly
+  intended behaviour are false positives regardless of score. **≥ 75 stays a finding** (`score:<n>`);
+  **< 75 moves to Low-confidence notes** — kept for traceability, never silently dropped. Confirmed
+  findings aren't scored. Required when ≥1 suspected `[H]`/`[M]` finding exists; otherwise
+  `scorer: skipped — <reason>`.
+
+### Fixed (eval harness)
+- `evals/02` false-failed on a correct Russian-language review; the check is now EN+RU and the harness
+  captures structured `ReportFindings` content. All 3 scenarios green on this branch.
+
+### Notes
+- Ideas from the official `code-review` plugin (per-issue confidence scoring with a cutoff, prior-PR
+  comments on the same files), adapted: one batched scorer instead of one agent per finding (cost), and
+  low scores demoted to notes instead of discarded.
 ## [2.52.0] - 2026-10-22
 
 ### Added (visual comparison against an approved baseline)
