@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.50.0] - 2026-10-22
+
+### Added (two long-deferred domain packs)
+- **`domain-packs/data-migrations.md`** — the overlap window and the rows the new code didn't create:
+  old code × new schema (expand → contract, no rename/drop/NOT NULL in one step), **old rows through new
+  code**, new-shape rows through old paths (other services, jobs serialized before deploy, caches), new
+  constraints vs existing data, backfill row/null counts + batched + re-runnable, partially-backfilled
+  tables, online index creation / no rewrite on big tables, production-sized duration, a real `down()`,
+  rollback with the previous build, migration ordering collisions.
+- **`domain-packs/background-jobs.md`** — at-least-once reality: runs twice → one effect, two workers /
+  job longer than its visibility timeout, dedup keys, **dispatch after commit**, ids-not-snapshots,
+  jobs serialized by the previous build, bounded retry + backoff, permanent failure → failed/DLQ, poison
+  payloads, partially-applied jobs not repeating their first side effect, safe replay, ordering,
+  scheduled tasks (once per schedule across servers, no overlap, timezone), resumable batches.
+- Every migration item is tagged by **how it's verified** — `[live]` through the product on staging,
+  `[read]` a supporting read (migration file, `--pretend` on a local DB, read-only non-prod query), or
+  `[needs-OK]` (a rollback / re-run on shared staging — asked explicitly, otherwise `blocked`), so the
+  pack respects the "no server-side mutation without a yes" boundary instead of quietly assuming it.
+
+### Notes
+- Both close gaps recorded after the 2026-08 audit ("missing domain packs: data-migrations/rollback,
+  background-jobs/queues"). Packs are pulled only when the diff touches the domain — no new gate, no new
+  manifest columns.
+- Sources: Bytebase, technicalqa.com, qatronic.com, Harbor Software (expand/contract, overlap window,
+  production-sized duration, rollback); AWS SQS + Microsoft background-jobs guidance, MinimumCD *Event
+  Consumer*, QAPractices job-queue cases, Laravel queue/scheduler docs.
+
 ## [2.49.0] - 2026-10-22
 
 ### Added (performance domain pack)
