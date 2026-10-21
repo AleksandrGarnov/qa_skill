@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.47.0] - 2026-10-22
+
+### Added (cross-run bug identity + honest repro provenance)
+- **`Fingerprint` on every found bug** — `component · symbol/endpoint · root-cause one-liner`, deliberately
+  **without line numbers** so it survives code drift. It is how a re-test matches a prior finding instead
+  of re-filing it as new, and how a broken fix becomes visible.
+- **`regressed` status.** On a RE-TEST the report now **opens** with a *Prior findings* table: each prior
+  finding matched by Fingerprint and re-verified live → `fixed` / `still open` / **`regressed`** (fixed
+  before, failing again). A regressed bug ranks above same-severity open bugs, is named in the verdict
+  summary, and counts as a red regression (existing NO-GO trigger). Step 10 flips the status on the same
+  block rather than filing a duplicate.
+- **`Repro provenance` on every found bug** — `executed` (steps run as written this run) · `derived`
+  (bug observed, steps reconstructed afterwards, not re-run as written) · `script only — not reproducible
+  by hand: <reason>` (e.g. a race needing a parallel burst). A dev can now tell steps that were actually
+  walked from steps that were inferred — the same "coverage needs execution" rule, applied to the repro.
+- **One root cause → one bug block**, listing the symptoms it explains (template guidance).
+
+### Changed
+- **`verify-report.sh` gates the two new fields structurally:** a found-bug block with no `Fingerprint`,
+  a placeholder one, no `Repro provenance`, or a value outside the known set fails `REPORT-OK`; each
+  violation names the bug and the missing field. EN + RU labels/values by default
+  (`Отпечаток`, `Происхождение repro`; `выполнено`/`восстановлено`/`только скрипт`), overridable via
+  `QA_RE_FINGERPRINT` / `QA_RE_PROVENANCE` / `QA_RE_PROVENANCE_VALUE`. The gate checks presence and
+  vocabulary only — whether `executed` is *true* stays with the pre-verdict self-audit.
+- `example-cycle.md` shows the filled fields.
+
+### Notes
+- Reports written before 2.47.0 are not re-gated; `qa-harvest` / `learned-checks scan` read old bug blocks
+  unchanged. +9 `verify-report` cases (missing / placeholder / unknown value / derived / script-only / RU).
 ## [2.46.0] - 2026-10-22
 
 ### Added (concurrency attacks that actually land)

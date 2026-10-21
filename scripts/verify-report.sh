@@ -23,6 +23,9 @@ PRIOR_RE="${QA_RE_PRIOR:-Prior-test basis|Основа теста|Базис т�
 VERDICT_RE="${QA_RE_VERDICT:-Verdict|Вердикт}"
 BASIS_VAL_RE="${QA_RE_BASIS_VALUE:-FRESH|RE-?TEST|ПОВТОРН|РЕ-?ТЕСТ|СВЕЖ}"
 NOTEXEC_RE="${QA_RE_NOTEXEC:-not executed|не выполн|не запуск}"
+FP_RE="${QA_RE_FINGERPRINT:-Fingerprint|Отпечаток}"
+PROV_RE="${QA_RE_PROVENANCE:-Repro provenance|Происхождение repro}"
+PROV_VAL_RE="${QA_RE_PROVENANCE_VALUE:-executed|derived|script only|выполнен|восстановлен|выведен|только скрипт}"
 
 # 1) Prior-test basis gate line is filled (a real FRESH / RE-TEST value, not a blank/placeholder).
 pt="$(grep -nE "$PRIOR_RE" "$f" | head -1 | cut -d: -f1)"
@@ -69,23 +72,42 @@ else
   done <<< "$rows"
 fi
 
-# 3) Every Found-bug block must carry EXACT repro steps (>=1 real numbered step, not a placeholder).
-missing_repro="$(awk -v F="$FOUND_RE" '
+# 3) Every Found-bug block must carry:
+#    - EXACT repro steps (>=1 real numbered step, not a placeholder);
+#    - a Fingerprint (component · symbol · root cause, no line numbers) — the stable identity that lets
+#      a re-test match this bug across runs and flag a broken fix as `regressed` instead of "new";
+#    - a Repro provenance: executed (run as written this run) | derived (reconstructed, not re-run as
+#      written) | script only (not reproducible by hand — reason). Honesty about the repro, checked as
+#      structure: the label must be present and one of the known values; its truth is the self-audit's.
+bug_gaps="$(awk -v F="$FOUND_RE" -v FP="$FP_RE" -v PV="$PROV_RE" -v PVV="$PROV_VAL_RE" '
+  function val(line, lab,   v) {
+    v=line; sub("^.*(" lab ")[*_]*[[:space:]]*:[*_]*[[:space:]]*", "", v)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", v); return v
+  }
+  function flush() {
+    if (inblock && hdr!="") {
+      if (!have) print hdr "\tno exact repro steps"
+      if (!fp)   print hdr "\tno Fingerprint (component · symbol · root cause)"
+      if (!pv)   print hdr "\tno Repro provenance (executed / derived / script only)"
+    }
+    inblock=0; hdr=""; have=0; fp=0; pv=0
+  }
   $0 ~ ("^## +(" F ")") {insec=1; next}
   insec && /^## / {flush(); insec=0}
-  insec && /^### / {flush(); hdr=$0; sub(/^### +/,"",hdr); inblock=1; have=0; next}
+  insec && /^### / {flush(); hdr=$0; sub(/^### +/,"",hdr); inblock=1; next}
   insec && inblock {
     if ($0 ~ /^[[:space:]]*[0-9][.)][[:space:]]/) {
       rest=$0; sub(/^[[:space:]]*[0-9][.)][[:space:]]+/,"",rest)
       gsub(/^[[:space:]]+/,"",rest); gsub(/[[:space:]]+$/,"",rest)
       if (rest != "" && rest !~ /^<.*>$/) have=1
     }
+    if ($0 ~ ("(" FP ")[*_]*[[:space:]]*:")) { v=val($0, FP); if (v != "" && v !~ /^</) fp=1 }
+    if ($0 ~ ("(" PV ")[*_]*[[:space:]]*:")) { v=val($0, PV); if (v !~ /^</ && tolower(v) ~ ("^(" PVV ")")) pv=1 }
   }
   END {flush()}
-  function flush() {if (inblock && hdr!="" && !have) print hdr; inblock=0; hdr=""; have=0}
 ' "$f")"
-if [ -n "$missing_repro" ]; then
-  while IFS= read -r b; do [ -n "$b" ] && fail "bug has no exact repro steps: $b"; done <<< "$missing_repro"
+if [ -n "$bug_gaps" ]; then
+  while IFS=$'\t' read -r b why; do [ -n "$b" ] && fail "bug '$b': $why"; done <<< "$bug_gaps"
 fi
 
 # 4) A clean ✅ GO must not coexist with any 'not executed' approved item.
