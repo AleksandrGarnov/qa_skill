@@ -91,7 +91,13 @@ Code coverage matrix (changed-code ↔ tests) — both axes audited:
 ```
 ### PAY-412-BUG-01 — [Payments] Full card number stored in localStorage
 - Severity: blocker   Priority: high
+- Fingerprint: payments · remember-card persistence · full PAN written instead of the masked value
+- Status across runs: new
 - Found in round: R1   •   Fix verified in round: open
+- Repro provenance: executed — run as written on R1
+- Repro steps:
+  1. Open /checkout as a fresh user, enter card 4242 4242 4242 4242, tick "Remember card", pay.
+  2. In DevTools → Application → Local Storage, read key "savedCard".
 - Actual: localStorage key "savedCard" holds the full 16-digit PAN in clear text.
 - Expected: only the masked value (e.g. **** **** **** 4242) is persisted.
 ```

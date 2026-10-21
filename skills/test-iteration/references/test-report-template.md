@@ -120,6 +120,15 @@ Verdict selection rules:
 
 ## Found bugs
 > One bug — one block. Severity (impact) and Priority (urgency) are two DIFFERENT fields.
+> **One root cause — one block.** When several failing items trace to the same cause, file the cause once and list the items/symptoms it explains under *Actual*; don't file five blocks the dev will fix with one change (and don't merge two genuinely different causes to look tidy).
+
+**Prior findings (RE-TEST only — lead with this table, before any new bug):** every finding from the prior doc / Jira QA comment, matched **by Fingerprint** and re-verified live on this build. A new failure whose Fingerprint matches a prior row **updates that row** — it is not filed again as a new bug.
+
+| Prior bug | Fingerprint | Severity | Status before | Status now (live, this build) | Evidence |
+|-----------|-------------|----------|---------------|-------------------------------|----------|
+| <PAY-XXX-BUG-NN> | <component · symbol · root cause> | major | open / fixed | fixed / still open / **regressed** | <raw output> |
+
+> **`regressed`** = it was fixed (verified in a prior round or a prior doc) and fails again — a broken fix. Order it **above** open bugs of the same severity and call it out in the verdict summary; it is a red regression (a NO-GO trigger). "Fixed but not re-verified live" is `still open`, never `fixed`. `FRESH` runs write `none — FRESH` here.
 
 > **Severity / Priority rubric (so they aren't a gut call — ISTQB: severity = technical impact, set by QA; priority = business urgency, set by PO).** They are independent: a crash in a dead legacy feature can be high-severity/low-priority; a homepage typo can be low-severity/high-priority.
 >
@@ -132,10 +141,13 @@ Verdict selection rules:
 ### <PAY-XXX-BUG-NN> — [<Feature>] <what breaks> <where>
 - **Severity:** blocker / major / minor
 - **Priority:** high / medium / low
+- **Fingerprint:** `<component · symbol/endpoint · root-cause one-liner>` — **no line numbers**, so it survives code drift; it's how the next run matches this bug (`verify-report.sh` requires it)
+- **Status across runs:** new / still open / **regressed** (fixed before, failing again)
 - **Found in round:** R<N>   •   **Fix verified in round:** R<N> / open
 - **Build verified against:** <commit/build of the round where the fix was re-tested>
 - **Impact:** <who is affected; is there a workaround>
 - **Environment:** environment/URL <...>, build/commit <...>, browser+version <...>, device <...>, account <...>, feature flags <...>
+- **Repro provenance:** one of — `executed` (the steps below were run **as written** this run and showed the wrong result) · `derived` (the bug was observed, but these steps were reconstructed afterwards and not re-run as written — the dev should treat them as unverified) · `script only — not reproducible by hand: <reason>` (e.g. a race that needs a parallel burst; the steps are the script). Required by `verify-report.sh`; never label derived steps `executed`.
 - **Repro steps** (EXACT and copy-pasteable, from a clean start — **mandatory for every bug**):
   > Not a mechanism summary — the literal steps a developer can paste and re-run to see the bug: the exact commands (the `psql`/`repl`/`curl`/API call **with real inputs**), the precise UI clicks, and the starting state to set up. "Mechanism + observed states" is not repro; if a dev can't reproduce it from these lines alone, they're not done. A bug without exact repro steps is an **incomplete report** (`verify-report.sh` fails it).
   1. <set up the starting state — exact command/data>

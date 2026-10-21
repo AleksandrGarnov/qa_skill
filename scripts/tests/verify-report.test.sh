@@ -88,6 +88,8 @@ cat > "$tmp/bug_ok.md" <<'MD'
 | 1 | reconcile | `app reconcile --id=1` | fail | observed-data | R1 | balance=-100 |
 ## Found bugs
 ### BUG-01 — reconcile loses a credit
+- Fingerprint: wallet · reconcile() · stale snapshot overwrites a fresh credit
+- Repro provenance: executed — steps below run as written on R1
 - Repro steps:
   1. set balance to 0 via `app set-balance --id=1 --to=0`
   2. credit 50 via `app credit --id=1 --amount=50`
@@ -115,6 +117,47 @@ cat > "$tmp/bug_norepro.md" <<'MD'
 NO-GO
 MD
 assert_eq "bug without exact repro -> exit 1" "1" "$(rc "$tmp/bug_norepro.md")"
+
+# --- Fingerprint + repro provenance (cross-run identity, honesty about the repro) ---
+mkbug() { # $1=file  $2=fingerprint line  $3=provenance line
+  cat > "$1" <<MD
+# Test Report
+**Prior-test basis:** FRESH
+## Checklist results
+| # | Item | How run | Result | Evidence | Round | Actual |
+|---|------|---------|--------|----------|-------|--------|
+| 1 | reconcile | \`app reconcile --id=1\` | fail | observed-data | R1 | balance=-100 |
+## Found bugs
+### BUG-01 — reconcile loses a credit
+$2
+$3
+- Repro steps:
+  1. credit 50 via \`app credit --id=1 --amount=50\`
+  2. read \`app balance --id=1\` -> shows 0, not 50
+## Verdict
+NO-GO
+MD
+}
+FP='- **Fingerprint:** wallet · reconcile() · stale snapshot overwrites a fresh credit'
+mkbug "$tmp/fp_missing.md" "" "- **Repro provenance:** executed"
+assert_eq "bug without Fingerprint -> exit 1" "1" "$(rc "$tmp/fp_missing.md")"
+mkbug "$tmp/fp_placeholder.md" "- **Fingerprint:** <component · symbol · root cause>" "- **Repro provenance:** executed"
+assert_eq "bug with placeholder Fingerprint -> exit 1" "1" "$(rc "$tmp/fp_placeholder.md")"
+mkbug "$tmp/prov_missing.md" "$FP" ""
+assert_eq "bug without Repro provenance -> exit 1" "1" "$(rc "$tmp/prov_missing.md")"
+mkbug "$tmp/prov_bogus.md" "$FP" "- **Repro provenance:** probably fine"
+assert_eq "bug with unknown provenance value -> exit 1" "1" "$(rc "$tmp/prov_bogus.md")"
+mkbug "$tmp/prov_placeholder.md" "$FP" "- **Repro provenance:** <executed / derived / script only>"
+assert_eq "bug with placeholder provenance -> exit 1" "1" "$(rc "$tmp/prov_placeholder.md")"
+mkbug "$tmp/prov_derived.md" "$FP" "- **Repro provenance:** derived — reconstructed from the API log, not re-run as written"
+assert_eq "derived provenance -> exit 0" "0" "$(rc "$tmp/prov_derived.md")"
+mkbug "$tmp/prov_script.md" "$FP" "- **Repro provenance:** script only — not reproducible by hand: needs a 20-request parallel burst"
+assert_eq "script-only provenance -> exit 0" "0" "$(rc "$tmp/prov_script.md")"
+mkbug "$tmp/prov_ru.md" "- **Отпечаток:** кошелёк · reconcile() · снапшот затирает кредит" "- **Происхождение repro:** выполнено — шаги прогнаны как записаны"
+assert_eq "RU labels/values -> exit 0" "0" "$(rc "$tmp/prov_ru.md")"
+out="$("$VR" "$tmp/prov_missing.md" 2>&1)"
+case "$out" in *"BUG-01"*"provenance"*|*"provenance"*"BUG-01"*) echo "ok   - violation names the bug and the missing field"; pass=$((pass+1));;
+  *) echo "FAIL - violation should name the bug and field: $out"; fail=$((fail+1));; esac
 
 # Clean GO with a 'not executed' row -> FAIL (1)
 cat > "$tmp/cleango_notrun.md" <<'MD'
