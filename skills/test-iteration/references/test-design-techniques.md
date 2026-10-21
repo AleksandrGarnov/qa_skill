@@ -109,7 +109,7 @@ Rules that keep it honest:
 
 ## 7. Error guessing (experience-based) — target the likely mistakes
 
-Systematic techniques cover the *specified* space; error guessing targets the mistakes a developer likely made and the inputs users actually send. Enumerate them deliberately — don't call it "poke around". Sources: the **step-4.5 adversarial pass**, prior escaped defects, [learned-checks.md](learned-checks.md), and known fault patterns (division by zero, null/empty, huge/tiny/negative, off-by-one, encoding/locale, timezone/DST, concurrent double-submit, resource exhaustion). Each guess that fits the change becomes a concrete checklist item.
+Systematic techniques cover the *specified* space; error guessing targets the mistakes a developer likely made and the inputs users actually send. Enumerate them deliberately — don't call it "poke around". Sources: the **step-4.5 adversarial pass**, prior escaped defects, [learned-checks.md](learned-checks.md), and known fault patterns (division by zero, null/empty, huge/tiny/negative, off-by-one, encoding/locale, timezone/DST, concurrent double-submit — run it with [concurrency-techniques.md](concurrency-techniques.md), not as two sequential requests — resource exhaustion). Each guess that fits the change becomes a concrete checklist item.
 
 > A **classification tree** is the modelling aid for §1/§6: draw each parameter as a branch, its EP/BVA classes as leaves, then pick combinations across leaves. Same discipline, visual form — record it as `classification-tree` if that's how you derived the set.
 

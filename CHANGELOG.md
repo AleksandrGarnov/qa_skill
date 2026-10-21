@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.0] - 2026-10-22
+
+### Added (concurrency attacks that actually land)
+- **`references/concurrency-techniques.md`** — the *how* behind step 4.5's "concurrent action / duplicate /
+  retry" attacks. Before this, a race was named in the brief but usually "tested" as two sequential
+  requests, which almost never lands, so a not-landed race proved nothing about the window. Black-box,
+  through the real API on staging, on a fresh subject per attack: **sequential benchmark first** (sequential
+  breaks it → plain logic bug; only parallel breaks it → race), **parallel burst** at N=2 then 20–30
+  (HTTP/2 multiplexing where available), **multi-endpoint state races** (confirm+cancel, capture+refund),
+  the **four idempotency-key replays** (after completion / different body → 422 / in flight → 409 / no key
+  → 400, per the IETF draft), **retry after an ambiguous client timeout** and webhook redelivery, and
+  **rate limits as races**. Always asserted on the **resulting state**, never on status codes.
+- Wired into the 4.5 brief and the step index, error-guessing in `test-design-techniques.md`, and the
+  payments pack's idempotency section.
+
+### Changed
+- **An intermittent race is a `fail` with its rate, not `flaky`.** `flaky-protocol.md` now carves this out:
+  when a concurrency attack lands on some bursts and not others, the wrong state *was* observed — record
+  `fail` with `landed k/N bursts`, never park it in the flaky bucket. Not landed after 3–5 bursts → a
+  not-landed hardening item recording technique, N, and observations.
+
+### Notes
+- Client-side only: no server patching, injected delays, or deployed probes (the existing "never put a
+  file on the server" boundary). Bursts are bounded (≤30) — race testing, not load testing.
+- Sources: PortSwigger *Race conditions* + Kettle's *Smashing the state machine* / *single-packet attack*;
+  IETF HTTPAPI Idempotency-Key draft; OWASP API Top 10 2023 (API4/API6).
+
 ## [2.45.1] - 2026-10-16
 
 ### Fixed (finalize-gate blocked pushes of unrelated branches)
