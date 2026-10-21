@@ -125,6 +125,9 @@ for line in open(sys.argv[1], errors="replace"):
         for c in d.get("message", {}).get("content", []):
             if c.get("type") == "text":
                 print(c.get("text", ""))
+            # structured findings tools carry the content a text-only grep would miss
+            elif c.get("type") == "tool_use" and c.get("name") in ("ReportFindings",):
+                print(json.dumps(c.get("input", {}), ensure_ascii=False))
     elif d.get("type") == "result" and isinstance(d.get("result"), str):
         print(d["result"])
 PY
