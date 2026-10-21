@@ -54,13 +54,15 @@
 | boundary | <N classes / min−1·min·max·max+1 per ordered field {…}> |
 
 ## Changed-surface coverage (Test-Gap — every changed behaviour maps to a check, so the checklist scales to the diff)
-> **Frozen from `changed-surfaces.sh <branch> [base]` at approval.** This is what stops a big change ("2000 lines") from being "covered" by a handful of items: each changed behaviour-surface (a changed non-noise file, or `file::function` where git names the hunk) must map to **≥1 item ID from ## Items**, or an explicit **`N/A — <reason>`** (pure refactor/rename, config-only, dead code, generated). `verify-gap.sh <this-file> <surfaces-file>` fails closed on any surface with **no row** (unmapped) or a row with **no covering item and no reasoned N/A**. Structural only — that the named items *truly exercise* the surface is checked at the step-6.5 review. Paste the `changed-surfaces.sh` output as the rows; do **not** trim it to make the gate pass (the frozen surfaces file is the source of truth the merge-gate re-checks).
+> **Frozen from `changed-surfaces.sh <branch> [base]` at approval.** This is what stops a big change ("2000 lines") from being "covered" by a handful of items: each changed behaviour-surface (a changed non-noise file, or `file::function` where git names the hunk) must map to **≥1 item ID from ## Items**, or an explicit **`N/A — <reason>`** (pure refactor/rename, dead code, generated). Migrations are surfaces like any code; `@runtime::cold-start` (printed when the diff touches what the app boots from) maps to a cold-start smoke item — see checklist-coverage → Smoke. `verify-gap.sh <this-file> <surfaces-file>` fails closed on any surface with **no row** (unmapped) or a row with **no covering item and no reasoned N/A**. Structural only — that the named items *truly exercise* the surface is checked at the step-6.5 review. Paste the `changed-surfaces.sh` output as the rows; do **not** trim it to make the gate pass (the frozen surfaces file is the source of truth the merge-gate re-checks).
 
 | Changed surface | Covered by items | Notes |
 |-----------------|------------------|-------|
 | <path/to/File.ext::function or method> | I1, I8 | <how these items exercise it> |
 | <path/to/Other.ext> | I3 | <…> |
-| <path/to/Migration_or_config.ext> | N/A | <schema-only, no behaviour path> |
+| <database/migrations/…_add_status.php> | I4, I9 | <old rows through new code; backfill counts — see the data-migrations pack> |
+| @runtime::cold-start | I0 | <cold-start smoke: boots, no pending migrations, workers up, new env keys present, first request on a fresh subject> |
+| <path/to/pure_rename.ext> | N/A | <pure rename, no behaviour change> |
 
 > Every surface emitted by `changed-surfaces.sh` must appear here. A surface tested on multiple journeys lists all covering IDs. An `N/A` needs a real reason — a bare `N/A` is rejected. The blast-radius of the change (callers of the changed code) should surface as **Regression** items above, not be dropped here.
 

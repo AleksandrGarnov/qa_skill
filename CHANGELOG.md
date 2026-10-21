@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.51.0] - 2026-10-22
+
+### Fixed (Test-Gap blind spot: migrations and infra changes needed no test)
+- **`changed-surfaces.sh` treated every file under `migrations/` — and every config file — as noise.** A
+  diff that only added a migration, bumped a dependency, or changed Dockerfile/compose produced **zero
+  surfaces**, so `verify-gap.sh` passed trivially and nothing required a check — the riskiest deploy
+  changes were the only ones the Test-Gap gate couldn't see. Migration files are now surfaces like any
+  code.
+
+### Added (cold-start smoke, enforced by the existing gate)
+- **`@runtime::cold-start` surface.** When the diff touches what the app boots from — migrations,
+  Dockerfile/compose, dependency manifests or lockfiles, framework `config/`, deploy/k8s/helm/infra,
+  `.env` examples, nginx/supervisor/php.ini — `changed-surfaces.sh` prints one synthetic surface. The
+  existing Test-Gap gate then requires it to map to an item (or a reasoned N/A), so the cold-start smoke
+  can't be skipped by forgetting it. No new gate, no new manifest column.
+- **Cold-start smoke item** (checklist-coverage → Smoke), run first on the bumped build: the service boots
+  and answers health/version; no pending migrations (read-only status); workers/scheduler up and a
+  trivial job processed; every env/config key the change introduced exists (names only, never values);
+  the first real request on a fresh subject succeeds end-to-end.
+
+### Notes
+- Detection uses the `diff --git` header, so deleting a Dockerfile or a migration triggers too. Plain
+  code, docs, CI workflow files, tests, and translation JSON do **not** trigger it (+25 cases in
+  `changed-surfaces.test.sh`). Idea from GSD's `verify-work` (cold-start smoke when server/db/migration
+  files change), made mechanical here through the Test-Gap surface list.
 ## [2.50.0] - 2026-10-22
 
 ### Added (two long-deferred domain packs)
