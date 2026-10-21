@@ -4,7 +4,7 @@ Reusable, sourced check sets for recurring problem domains. The generic negative
 
 ## How `test-iteration` uses them
 
-1. **Detect the domain(s) in triage (step 5)** — from the diff, decide which domains the change actually touches (a payment endpoint → `payments`; a login/session/token change → `auth-sessions`; a permission/role/ownership/tenant-scoped read or write → `authorization-tenancy`; a `<form>` / validation change → `forms`; an upload handler → `file-upload`; a search/query feature → `search`; a translated/localized surface → `i18n-l10n`; a list/search/export endpoint, a new query or loop over related records, a cache, or user-sized input → `performance`).
+1. **Detect the domain(s) in triage (step 5)** — from the diff, decide which domains the change actually touches (a payment endpoint → `payments`; a login/session/token change → `auth-sessions`; a permission/role/ownership/tenant-scoped read or write → `authorization-tenancy`; a `<form>` / validation change → `forms`; an upload handler → `file-upload`; a search/query feature → `search`; a translated/localized surface → `i18n-l10n`; a list/search/export endpoint, a new query or loop over related records, a cache, or user-sized input → `performance`; a migration, schema/model change, or backfill → `data-migrations`; a queued job, listener/consumer, or scheduled task → `background-jobs`).
 2. **Fold the matching pack into the tailored checklist (step 6)** — don't paste it whole and don't run it blindly: pick the items the change can actually break, drop the rest with the usual `N/A — <reason>`, and add feature-specifics on top.
 3. **Each pulled item still gets** Risk (H/M/L), Trace (→ AC / ticket), and an Evidence type when run (a `runtime`/security item needs `observed-data`/`api`/`log`, per the evidence-gate).
 
@@ -22,5 +22,7 @@ These packs supplement — they never replace — the AC-derived and code-derive
 | [search](search.md) | a search box, query endpoint, relevance/filter/pagination |
 | [i18n-l10n](i18n-l10n.md) | translated strings, locale formatting, RTL, encoding |
 | [performance](performance.md) | list/search/export endpoints, new queries or joins, loops over related records, caches, bulk/user-sized input, downstream timeouts |
+| [data-migrations](data-migrations.md) | migrations, schema/model changes, backfills and data-fix commands, code reading a column another migration touches |
+| [background-jobs](background-jobs.md) | queued jobs, event listeners/consumers, scheduled (cron) tasks, side effects moved off the request path |
 
 > Packs are starting points grounded in current references (OWASP ASVS/WSTG/Cheat Sheets, Microsoft Globalization, fintech payment-testing guides), cited at the foot of each file. Treat them as a floor, not a ceiling.
