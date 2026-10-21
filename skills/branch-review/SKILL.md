@@ -31,6 +31,14 @@ Before anyone reads the diff, let the project's **own** deterministic tools do t
 
 **Done when:** each available tool ran (or is recorded skipped/unavailable with a reason) and its in-diff offenders are listed for step 3.
 
+## 1.7. History of the changed files (cheap context for the reviewers)
+
+Past defects cluster: a file that needed fixes before is where the next one hides, and a reviewer's concern on an earlier PR often applies again. Collect, read-only:
+- **Prior fixes** — `git log --format='%h %s' -n 30 -- <changed files>`; keep subjects that look like fixes/reverts/hotfixes (`fix`, `bug`, `hotfix`, `revert`, ticket keys tagged as bugs). A changed file with recent fixes is a review hotspot.
+- **Prior review comments** (if `gh` is available) — from the same log, take the last ~5 `Merge pull request #N` numbers that touched these files and read their **inline review comments** (`gh api repos/{owner}/{repo}/pulls/<N>/comments --jq '.[] | {path, line, body}'`), keeping only those on the files changed now.
+
+Hand both to the reviewers in step 2 as context ("this file was fixed for X; a reviewer warned about Y here"), not as findings — a past comment becomes a finding only if the current diff actually repeats the problem. `gh` unavailable / no merges in the log → note `history: git only` or `history: none` and continue.
+
 ## 2. Run two passes (in parallel) — tool-agnostic with fallbacks
 
 Pick the first available tool in each chain. **Discover by capability, don't assume a specific plugin is installed** — if the project ships a dedicated reviewer/security plugin, prefer it; otherwise fall through. The last option in each chain works on a bare Claude Code install, so this never silently no-ops.
@@ -42,7 +50,7 @@ Whatever tool runs, **record which one you used and which tier it came from** (s
 
 **Verification bar:** flag only what affects correctness / requirements / security, each tied to `file:line`. Style nitpicks are optional — don't bloat the output. No overengineering.
 
-**Subagent prompt (when falling back to `general-purpose`):** pass it (a) the changed-files list and diff from step 1, (b) its role (code reviewer OR security auditor — one role per agent), (c) the output format below, (d) the rule "report only correctness/security-relevant findings with `file:line`; if nothing material, say so".
+**Subagent prompt (when falling back to `general-purpose`):** pass it (a) the changed-files list and diff from step 1, (b) its role (code reviewer OR security auditor — one role per agent), (c) the output format below, (d) the step-1.7 history for the changed files, (e) the rule "report only correctness/security-relevant findings with `file:line`; if nothing material, say so".
 
 **Done when:** both passes have returned (or are explicitly noted as unavailable).
 
@@ -56,6 +64,17 @@ For a finding that is a **concrete defect** (not just a potential risk), also ta
 
 **Optional confirmation tier.** If an installed skill can turn a code-level suspicion into a failing repro **without editing the code** (e.g. `qa-bug-hunter`, which writes repro tests only under its own gitignored `qa-bug-hunt/` folder), offer it the `[H]` suspected findings — passing their `file:line` and scenario as the target, so it doesn't re-scan the repo. A finding whose repro fails becomes `confirmed` with the repro path; one whose repro **passes** is downgraded and says so (the code may be right) — never silently dropped. No such skill installed → findings stay `suspected`, and `test-iteration` turns them into runtime checklist items, where staging decides.
 
+**Independent confidence scoring for `suspected` findings.** A reviewer grading its own findings keeps the false positives it already believed. **Required when ≥1 `suspected` finding is `[H]` or `[M]`**; with only `[L]` suspicions (or none) skip it and record `scorer: skipped — <reason>`. When required, after consolidating, spawn **one fresh `general-purpose` scorer** (a cheaper model is fine) — batched over all `suspected` findings, not one agent per finding — and give it each finding's `file:line`, its failure scenario, the relevant diff hunk and surrounding code, and the CLAUDE.md rules; **not** the reviewer's reasoning. It scores each 0–100 on a fixed rubric:
+- **0** — doesn't hold up on reading, or a pre-existing issue the diff didn't introduce;
+- **25** — might be real, couldn't verify from the code;
+- **50** — real but minor or rarely reachable;
+- **75** — verified on reading: the scenario reaches the code and produces the wrong result;
+- **100** — certain; the code plainly does it on a common path.
+
+Treat as false positives regardless of score: issues on unchanged lines, things a linter/type-checker/compiler would catch (step 1.5 already ran them), pure style, and behaviour the code explicitly intends (a comment or test says so). `confirmed` findings are not scored — execution already decided them.
+
+Findings scoring **≥ 75** stay in the ranked list (with `score:<n>`). Findings **below 75 are not deleted** — they move to a **Low-confidence notes** list under the output (one line each, with the score), so nothing is silently dropped and `test-iteration` can still pick one up if staging gives it a reason. Record `scorer: <tool/model>` next to the tools line.
+
 **Feed hotspots.** When a high-risk correctness/security finding lands in a component, tag it `hotspot:<area>` — a component that surfaces real findings is where the next bug hides, and a QA cycle (`test-iteration` step 5) up-weights flagged areas.
 
 Output format — one ranked list:
@@ -63,11 +82,14 @@ Output format — one ranked list:
 ```
 [H] sec  | path/api.ts:88  | <vulnerability> | <impact> | confirmed (repro: <path>) | sev:major | hotspot:auth
 [M] code | path/file.ts:42 | <issue> | <why it matters> | confirmed (source:signal phpstan) | sev:minor
-[M] code | path/calc.ts:17 | <issue> | <input → wrong output> | suspected
+[M] code | path/calc.ts:17 | <issue> | <input → wrong output> | suspected | score:80
+
+Low-confidence notes (scored < 75 — not findings, kept for traceability):
+- path/util.ts:9 | <issue> | score:40 | <why the scorer doubted it>
 ```
 
-(Every line carries `confirmed (<what proved it>)` or `suspected`. `sev:` only for confirmed defects; omit for suspected risks. `hotspot:` only for high-risk findings.)
+(Every line carries `confirmed (<what proved it>)` or `suspected` + `score:<n>`. `sev:` only for confirmed defects; omit for suspected risks. `hotspot:` only for high-risk findings.)
 
-Also report the **signals line**: which tools ran, what was skipped/unavailable and why, and any known-failing/flaky tests set aside as environment context.
+Also report the **signals line**: which tools ran, what was skipped/unavailable and why, and any known-failing/flaky tests set aside as environment context — plus `history:` (git+PR comments / git only / none) and `scorer:`.
 
-**Done when:** you return a single deduplicated, risk-ranked list — every finding labelled `confirmed` (with what proved it) or `suspected`, each confirmed defect carrying a severity, high-risk areas flagged as hotspots — noting which tools produced it (and any pass that was unavailable).
+**Done when:** you return a single deduplicated, risk-ranked list — every finding labelled `confirmed` (with what proved it) or `suspected` with an independent score ≥ 75 (lower scores listed as notes, never dropped), each confirmed defect carrying a severity, high-risk areas flagged as hotspots — noting which tools produced it (and any pass that was unavailable).
