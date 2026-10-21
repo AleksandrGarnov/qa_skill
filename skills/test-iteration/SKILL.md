@@ -31,7 +31,7 @@ Runs a git branch through a full pre-merge QA cycle and produces a fail-closed v
 > - **[test-data-management.md](references/test-data-management.md)** → before writing step 6 preconditions/teardown and provisioning in step 8.
 > - the matching **[domain pack](references/domain-packs/)** → when the diff touches its domain (step 5).
 > - **[checklist-coverage.md](references/checklist-coverage.md)** → before step 6, to right-size the run and sweep the coverage lenses (smoke/adversarial/edge/ux/perf/regression) + risk rubric.
-> - the templates ([checklist-manifest](references/checklist-manifest-template.md) — the single checklist/contract · [test-report](references/test-report-template.md)) → when you build each artifact.
+> - the templates ([checklist-manifest](references/checklist-manifest-template.md) — the single checklist/contract · [test-report](references/test-report-template.md)) → when you build each artifact; **[example-cycle.md](references/example-cycle.md)** shows the filled shape end to end.
 
 ### 1. Context + prior-test history
 Read `CLAUDE.md`: stack, **base branch**, **staging target** (+ any version/commit endpoint), the **test-docs path**, and how testing is done here (adapt if it differs — e.g. CI-only). Invoke **`jira-context`** for the ticket's summary, AC (tagged explicit/inferred and runtime/static), repro, status, and **discussion** comments. The AC — not the diff — are the primary source of what to verify.
