@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.52.0] - 2026-10-22
+
+### Added (visual comparison against an approved baseline)
+- **UX/UI lens → visual comparison.** Unchanged screens that a shared component / CSS / layout change
+  could still break are compared against an **approved baseline** (screenshots a human approved on a
+  previous run, kept with that run's bundle), captured under the same contract — browser, fixed viewport
+  375/768/1440, locale, theme, role, a ready signal instead of a fixed delay.
+- **No baseline → `inconclusive`, never `pass`**; the current capture is offered for approval at the
+  visual check so the next run has one.
+- Mask only incidental dynamic regions; never mask what defines the state (totals, balances,
+  role-dependent controls, the error message under test). Each diff is classified **intended** (traced
+  to AC/design) or **unintended** (`fail`); re-baselining only from a reviewed result.
+
+### Notes
+- Deliberately a lens addition, not a new pack: the UX/UI lens already carried responsive viewports, axe
+  + keyboard a11y, and Core Web Vitals targets — the missing piece was a baseline to compare against.
+- Sources: Playwright `toHaveScreenshot` practice as summarised in camoa dev-guides *Visual Regression
+  Workflow*; RenderLog, *Visual regression testing* ("a baseline is an approved decision, not the first
+  run"); Samelogic, *Visual Regression Testing Without Noisy Diffs* (2026) — don't mask state-defining
+  values; ecc `browser-qa` (no baseline = INCONCLUSIVE).
 ## [2.51.0] - 2026-10-22
 
 ### Fixed (Test-Gap blind spot: migrations and infra changes needed no test)
