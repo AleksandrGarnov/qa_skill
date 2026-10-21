@@ -8,6 +8,7 @@ Pull when the change touches charge/capture/refund/payout, the transaction state
 - [ ] Partial settlement / split → unsettled portion is queued/returned, never silently dropped
 
 ## Idempotency & retries
+> How to make these land (parallel burst, the four idempotency-key replays, retry after an ambiguous timeout, webhook redelivery): [concurrency-techniques.md](../concurrency-techniques.md).
 - [ ] Same `Idempotency-Key` resubmitted after a client timeout → returns the original result, **no second charge** (observe: one ledger entry, not two)
 - [ ] Idempotency-key collision (two *different* requests, same key) → surfaced as an error, not a silent wrong-charge
 - [ ] **Processor-side** retry of a request you already processed → handled as a duplicate, not a new charge

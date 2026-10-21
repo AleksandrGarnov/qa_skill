@@ -11,6 +11,8 @@ Record the result as `flaky` with the raw outputs of both the passing and failin
 ## 3. Re-observe a bounded number of times
 Re-run 1–2 times to characterise the flip; never auto-retry until green and call it done. Never auto-suppress a check that was **previously stable** — a newly-flaky stable check is more likely a real intermittent bug (race, timeout, shared state) than test noise.
 
+**Exception — an intermittent *race* is not flaky.** When a concurrency/duplicate attack lands on some bursts and not others, the wrong state *was observed*: record it `fail` with the rate (`landed 2/5 bursts, N=20`), not `flaky`. This protocol is for checks whose own outcome is unreliable, not for real defects that need timing to show. See [concurrency-techniques.md](concurrency-techniques.md).
+
 ## 4. Quarantine (if it's a standing automated test, not this run's finding)
 Move it out of the blocking gate but **keep it running** for signal. Quarantine needs guardrails or it becomes a graveyard (Fowler's old rule: small list, short life):
 - a **named owner** (a person, not "the team"),
