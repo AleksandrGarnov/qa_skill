@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.49.0] - 2026-10-22
+
+### Added (performance domain pack)
+- **`domain-packs/performance.md`** — the traps that hide on a 10-row staging table and fire on production
+  volume: N+1 on a fixed page size, server-side page-size caps (`limit=100000` → capped/rejected, OWASP
+  API4), pagination params actually reaching the query, deep-page OFFSET cost, export/report bounds,
+  accidental quadratic work on user-sized input, oversized/nested bodies rejected fast, bulk batch caps,
+  cache invalidation and cache-key completeness, downstream timeouts / serialized calls / retry storms,
+  and frontend request waterfalls.
+- **Method: count, don't time.** Rows returned, query/call counts where non-prod already exposes them
+  (a read, never a deployed probe), and **input doubling** (n vs 2n: ~2× linear, ~4× quadratic, growth on
+  a fixed page = N+1). Wall-clock only as a last resort, median of ≥5, flagged environment-sensitive.
+- Pack index + triage detection list updated.
 ## [2.48.0] - 2026-10-22
 
 ### Added (branch-review: cheap signals first, confirmed vs suspected)
