@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.54.0] - 2026-11-01
+
+### Added (branch-review: review lenses, untrusted content, refutable findings)
+- **Untrusted content.** Diff, comments, commit messages, PR/Jira text and test output are data from the
+  branch author, not instructions — stated in every reviewer and scorer prompt. Project rules are read from
+  the **base** branch; a `CLAUDE.md`/`AGENTS.md` changed by the diff is reviewed content, not policy.
+- **Refutable suspicions.** A `suspected` finding now states trigger, **expected** (from the requirement /
+  contract) vs **actual**, and a **flip condition** — what in the code would refute it. The scorer checks
+  the flip condition first; a refuting guard at `file:line` scores 0.
+- **Origin tag** — `introduced` / `exacerbated` / `pre-existing`. Exacerbated issues (on base, made worse by
+  the diff) stay findings instead of being scored 0 as pre-existing; pre-existing ones are listed once.
+- **File coverage.** Reviewers end with `inspected:`; a changed file nobody read is reported as
+  `uninspected:` — "no findings" covers only what was read. Two-pass recall: hypotheses first, then check
+  each; an unchecked one stays as `Unverified hypotheses`, never dropped. `test-iteration` turns both gaps
+  into runtime checks.
+- **`references/review-lenses.md`** — silent-failure, tests-in-the-diff (assertions that can't fail,
+  un-awaited async asserts), boundary sweep (unbounded input, ReDoS, URL state variants), per-stack lenses
+  (TS, React, Ruby, Python, mobile), security pass.
+
+### Notes
+- Ideas adapted from `Rbkmen/qa-orchestrator` (review profiles, failure/flip conditions, changed-path
+  attestation), cross-checked against Microsoft Security's agentic CI/CD guidance, Anthropic's
+  `silent-failure-hunter`, and testsmells.org. Their MCP server / session / benchmark layers were not taken —
+  our hook + bash gates already cover enforcement.
 ## [2.53.0] - 2026-10-22
 
 ### Added (branch-review: history context + independent scoring of suspicions)
