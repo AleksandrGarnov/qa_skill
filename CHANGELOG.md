@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.55.0] - 2026-11-01
+
+### Added (test-smell signal in branch-review)
+- **`scripts/test-smells.sh <file>...`** — lexical hints over the changed **test** files (others ignored):
+  `focused` (`.only`/`fit` — the rest of the suite stops running), `skipped`, `sleepy` (fixed waits),
+  `nondeterministic` (wall-clock / random), `unawaited-assert` (`expect(…).resolves` without `await` — can't
+  fail), `no-assertion` (Python `test_*` / JS-TS `it()`/`test()` with no assert/expect). Reads files only,
+  runs nothing, exits 0 — a signal, not a gate.
+- **branch-review step 1.5** runs it. A focused / skipped / un-awaited / assertion-less test the diff added or
+  changed, once read and confirmed, is a `confirmed` finding (`source:signal test-smells`); sleepy /
+  nondeterministic hits are flakiness context; hits on untouched lines are pre-existing notes.
+- Self-test `scripts/tests/test-smells.test.sh` (20 cases, incl. negatives: awaited `.resolves`,
+  `pytest.raises` / `self.assertX` count as assertions, commented-out `.only`, production files ignored).
+
+### Notes
+- Smell names follow testsmells.org (Empty/Unknown Test, Sleepy Test, Ignored Test); idea from
+  `Rbkmen/qa-orchestrator`'s `repo audit-tests`, re-done in portable bash/awk.
 ## [2.54.0] - 2026-11-01
 
 ### Added (branch-review: review lenses, untrusted content, refutable findings)
